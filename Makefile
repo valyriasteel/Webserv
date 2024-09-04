@@ -3,14 +3,20 @@ CXXFLAGS = -std=c++98 -Wall -Wextra -Werror
 CXX = c++ -g
 SRCS = main.cpp \
 		Server.cpp \
-		Location.cpp
+		Location.cpp \
+		ConfigParser.cpp \
+		ParserState.cpp
 OBJS_DIR = obj/
 OBJS = main.o \
 		Server.o \
-		Location.o
+		Location.o \
+		ConfigParser.o \
+		ParserState.o
 OBJS_PRE = $(OBJS_DIR)main.o \
 			$(OBJS_DIR)Server.o \
-			$(OBJS_DIR)Location.o
+			$(OBJS_DIR)Location.o \
+			$(OBJS_DIR)ConfigParser.o \
+			$(OBJS_DIR)ParserState.o
 
 RM = rm -rf
 

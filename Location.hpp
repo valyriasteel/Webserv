@@ -15,11 +15,11 @@ class Location
 		bool _autoindex;
 	public:
 		Location();
-		void setAllowMethods(const std::vector<std::string> &methods);
-		void setRoot(const std::string &r);
-		void setIndex(const std::string &idx);
-		void setCgiPath(const std::string &path);
-		void setCgiExtension(const std::string &ext);
+		void setAllowMethods(const std::vector<std::string> &);
+		void setRoot(const std::string &);
+		void setIndex(const std::string &);
+		void setCgiPath(const std::string &);
+		void setCgiExtension(const std::string &);
 		void setAutoindex(bool value);
 		const std::vector<std::string> &getAllowMethods() const;
 		const std::string &getRoot() const;

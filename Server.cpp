@@ -5,6 +5,16 @@ Server::Server()
 	client_max_body_size = 0;
 }
 
+Server::Server(int port) : _port(port)
+{
+	if(!initSocket())
+		throw std::runtime_error("Error: Socket initialization failed");
+	if(!bindSocket())
+		throw std::runtime_error("Error: Socket binding failed");
+	if(!listenSocket())
+		throw std::runtime_error("Error: Socket listening failed");
+}
+
 void Server::setListen(const std::string &l)
 {
 	_listen = l;

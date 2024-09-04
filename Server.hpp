@@ -2,6 +2,7 @@
 # define SERVER_HPP
 
 # include <map>
+# include <netinet/in.h>
 # include "Location.hpp"
 
 class Server
@@ -11,8 +12,12 @@ class Server
 		std::map<int, std::string> _error_pages;
 		int client_max_body_size;
 		std::map<std::string, Location> _locations;
+		int _port;
+		int _socket_fd;
+		struct sockaddr_in _server_addr;
 	public:
 		Server();
+		Server(int port);
 		void setListen(const std::string &);
 		void setErrorPage(int code, const std::string &);
 		void setClientMaxBodySize(int size);
@@ -21,6 +26,11 @@ class Server
 		const std::map<int, std::string> &getErrorPages() const;
 		int getClientMaxBodySize() const;
 		const std::map<std::string, Location> &getLocations() const;
+		bool initSocket();
+		bool bindSocket();
+		bool listenSocket();
+		bool acceptSocket();
+		void readRequest(int client_fd, fd_set& write_fds, fd_set& master_fds);
 };
 
 #endif

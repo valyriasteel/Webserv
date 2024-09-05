@@ -135,9 +135,14 @@ void ConfigParser::handleDirective(ParserState &state, std::string &key, std::is
     {
         std::string listen;
         iss >> listen;
-        if (listen.back() == ';')
-            listen.pop_back();
-        state.currentServer.setListen(listen);
+        size_t pos = listen.find(':');
+        if (pos == std::string::npos)
+            throw std::runtime_error("Error: Invalid 'listen' directive");
+        std::string host = listen.substr(0, pos);
+        int port = std::atoi(listen.substr(pos + 1).c_str());
+        std::map<std::string, int> listenInfo;
+        listenInfo[host] = port;
+        state.currentServer.setListen(listenInfo);
         state.listenSet = true;
     }
     else if (key == "root")

@@ -16,9 +16,7 @@ int main(int ac, char **av)
 
     	for (size_t i = 0; i < servers.size(); ++i)
 		{
-    	    std::cout << "Server " << (i + 1) << " listening on " << servers[i].getListen() << std::endl;
-			for (std::map<int, std::string>::const_iterator it = servers[i].getErrorPages().begin(); it != servers[i].getErrorPages().end(); ++it)
-				std::cout << "  error page " << it->first << " " << it->second << std::endl;
+    	    std::cout << "Server " << (i + 1) << " listening on " << servers[i].getListen() << ":" << servers[i].getPort() << std::endl;
     	    const std::map<std::string, Location>& locations = servers[i].getLocations();
     	    for (std::map<std::string, Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
     	        std::cout << "  Location " << it->first << " root: " << it->second.getRoot() << std::endl;

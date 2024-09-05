@@ -15,6 +15,10 @@ class Server
 		int _port;
 		int _socket_fd;
 		struct sockaddr_in _server_addr;
+		fd_set _read_fd;
+		fd_set _write_fd;
+		fd_set _master_fd;
+		std::map<int, std::string> _client_requests; //her istemci için gelen isteği saklamak için
 	public:
 		Server();
 		Server(int port);
@@ -30,7 +34,9 @@ class Server
 		bool bindSocket();
 		bool listenSocket();
 		bool acceptSocket();
-		void readRequest(int client_fd, fd_set& write_fds, fd_set& master_fds);
+		bool readRequest(int client_fd);
+		bool requestNewConnection(int max_fd);
+		bool closeSocket();
 };
 
 #endif

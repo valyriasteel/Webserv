@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "HttpRequest.hpp"
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/select.h>

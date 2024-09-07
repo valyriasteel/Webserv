@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include "Server.hpp"
 
 class HttpRequest
 {
@@ -17,10 +18,10 @@ class HttpRequest
     public:
         HttpRequest();
         ~HttpRequest();
-        static void handleHttpRequest(int client_fd, const std::string &request); 
-        static HttpRequest parseHttpRequest(const std::string &request);
-        static void parseHttpRequestUrl(std::string &httprequesturl);
-        static bool controlLocationUrl(std::string &location, std::vector<Server> &);
+        static void handleHttpRequest(int client_fd, const std::string &); 
+        static HttpRequest parseHttpRequest(const std::string &);
+        void parseHttpRequestUrl();
+        static bool controlLocationUrl(std::string &, std::vector<Server>&, std::string &);
 
 };
 

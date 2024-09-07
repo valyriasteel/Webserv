@@ -21,7 +21,7 @@ class Server
 		std::map<int, std::string> _client_requests; //her istemci için gelen isteği saklamak için
 	public:
 		Server();
-		Server(int port, std::vector<Server> &);
+		Server(int port);
 		void setListen(const std::string &);
 		void setErrorPage(int code, const std::string &);
 		void setClientMaxBodySize(int size);
@@ -39,4 +39,5 @@ class Server
 		bool closeSocket();
 };
 
+extern std::vector<Server> servers;
 #endif

@@ -1,6 +1,8 @@
 #include "Location.hpp"
 #include "ConfigParser.hpp"
 
+std::vector<Server> servers;
+
 int main(int ac, char **av)
 {
 	try
@@ -12,7 +14,7 @@ int main(int ac, char **av)
 
 		ConfigParser parser;
 		parser.checkArgument(configFilePath);
-    	std::vector<Server> servers = parser.configFileParser(configFilePath);
+    	servers = parser.configFileParser(configFilePath);
 
     	for (size_t i = 0; i < servers.size(); ++i)
 		{

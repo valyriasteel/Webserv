@@ -5,6 +5,7 @@
 # include "Location.hpp"
 # include <netinet/in.h>
 
+
 class Server
 {
 	private:
@@ -27,5 +28,7 @@ class Server
 		int getPort() const;
 		std::string getIp() const;
 };
+
+extern std::vector<Server> servers;
 
 #endif

@@ -1,5 +1,5 @@
 #ifndef HTTPREQUEST_HPP
-# define HTPPREQUEST_HPP
+# define HTTPREQUEST_HPP
 
 #include <iostream>
 #include <map>
@@ -21,8 +21,11 @@ class HttpRequest
         static void handleHttpRequest(int client_fd, const std::string &); 
         static HttpRequest parseHttpRequest(const std::string &);
         void parseHttpRequestUrl();
-        static bool controlLocationUrl(std::string &, std::vector<Server>&, std::string &);
-
+        static std::string controlLocationUrl(std::string &, std::vector<Server>&, std::string &);
+        static void handlePostRequest(int client_fd);
+        static void handleDeleteRequest(int client_fd);
+        static void handleUnAllowedRequest(int client_fd);
+        static void sendResponse(int client_fd, const std::string& response);
 };
 
 #endif

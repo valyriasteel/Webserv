@@ -16,7 +16,7 @@ int main(int ac, char **av)
 		parser.checkArgument(configFilePath);
     	servers = parser.configFileParser(configFilePath);
 		
-
+		
     	for (size_t i = 0; i < servers.size(); ++i)
 		{
     	    std::cout << "Server " << (i + 1) << " listening on " << servers[i].getListen() << std::endl;
@@ -30,6 +30,8 @@ int main(int ac, char **av)
 			}
 			
     	}
+		Server server1(80);
+		server1.serverRun();
 }
 	}
 	catch(const std::exception &e)

@@ -34,8 +34,9 @@ class Server
 		bool bindSocket();
 		bool listenSocket();
 		bool acceptSocket();
+		bool serverRun();
 		bool readRequest(int client_fd);
-		bool requestNewConnection(int max_fd);
+		bool requestNewConnection(int &max_fd);
 		bool closeSocket();
 };
 

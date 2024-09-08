@@ -5,18 +5,25 @@ SRCS = main.cpp \
 		Server.cpp \
 		Location.cpp \
 		ConfigParser.cpp \
-		ParserState.cpp
+		ParserState.cpp \
+		ServerSocket.cpp \
+		HttpRequest.cpp
 OBJS_DIR = obj/
 OBJS = main.o \
 		Server.o \
 		Location.o \
 		ConfigParser.o \
-		ParserState.o
+		ParserState.o \
+		ServerSocket.o \
+		HttpRequest.o
 OBJS_PRE = $(OBJS_DIR)main.o \
 			$(OBJS_DIR)Server.o \
 			$(OBJS_DIR)Location.o \
 			$(OBJS_DIR)ConfigParser.o \
-			$(OBJS_DIR)ParserState.o
+			$(OBJS_DIR)ParserState.o \
+			$(OBJS_DIR)ServerSocket.o \
+			$(OBJS_DIR)HttpRequest.o
+
 
 RM = rm -rf
 

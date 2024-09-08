@@ -5,6 +5,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
+
 bool Server::initSocket()
 {
 	_socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -38,6 +39,12 @@ bool Server::listenSocket()
     return true;
 }
 
+bool Server::serverRun()
+{
+    acceptSocket();
+    return true;
+}
+
 bool Server::acceptSocket()
 {
     FD_ZERO(&_read_fd);
@@ -48,6 +55,8 @@ bool Server::acceptSocket()
 
     while(true)
     {
+        FD_ZERO(&_read_fd); // bu iki satırı bir düşün
+        FD_ZERO(&_write_fd);
         _read_fd = _master_fd; // `select()` için `read_fds` kümesini güncelle
         _write_fd = _master_fd; // `select()` için `write_fds` kümesini güncelle
         int activity = select(max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);
@@ -96,7 +105,7 @@ bool Server::readRequest(int client_fd)
 {
     char buffer[1024];
     std::memset(buffer, 0, sizeof(buffer));
-    size_t byte_read = read(client_fd, buffer, sizeof(buffer));
+    ssize_t byte_read = read(client_fd, buffer, sizeof(buffer));
     if(byte_read <= 0)
     {
         if(byte_read == -1)
@@ -119,7 +128,7 @@ bool Server::readRequest(int client_fd)
     return false;
 }
 
-bool Server::requestNewConnection(int max_fd)
+bool Server::requestNewConnection(int &max_fd)
 {
     struct sockaddr_in _client_addr;
     socklen_t _client_addr_len = sizeof(_client_addr);

@@ -1,8 +1,21 @@
 #include "ConfigParser.hpp"
 #include <fstream>
-#include <sstream>
 
-void ConfigParser::checkArgument(const std::string &configFile)
+ConfigParser::ConfigParser()
+{
+   _inServer = false;
+    _inLocation = false;
+    _inError = false;
+    _currentServer = nullptr;
+    _servers = std::vector<Server>();
+}
+
+ConfigParser::~ConfigParser()
+{
+    _servers.clear();
+}
+
+void ConfigParser::checkArgument(std::string &configFile)
 {
     const std::string &confExtension = ".conf";
     size_t extensionPos = configFile.rfind(confExtension);
@@ -20,190 +33,91 @@ void ConfigParser::checkArgument(const std::string &configFile)
         throw std::runtime_error("Error: Config file " + configFile + " is empty");
 }
 
-bool ConfigParser::isWhitespaceOrControl(char c)
+std::vector<Server> ConfigParser::configFileParser(std::string &configFile)
 {
-    return (c >= 9 && c <= 13);
-}
-
-bool ConfigParser::isLineEmptyOrWhitespace(const std::string &line)
-{
-    for (size_t i = 0; i < line.size(); ++i)
-        if (!isWhitespaceOrControl(line[i]))
-            return false;
-    return true;
-}
-std::vector<Server> ConfigParser::configFileParser(const std::string &configFile)
-{
+    checkArgument(configFile);
     std::ifstream file(configFile.c_str());
     std::string line;
-    ParserState state(_servers);
 
     while (std::getline(file, line))
     {
-        std::istringstream iss(line.c_str());
-        std::string key;
-        iss >> key;
-
-        if (isLineEmptyOrWhitespace(line))
+        line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+        if (line.empty() || line[0] == '#')
             continue;
-        if (key == "server")
-            handleServerBlock(iss, state, key);
-        else if (key == "{")
-            handleOpeningBrace(state);
-        else if (key == "location")
-            handleLocationBlock(state, iss);
-        else if (key == "}")
-            handleClosingBrace(state, _servers);
-        else
-            handleDirective(state, key, iss);
+        if (line == "server:")
+            if (serverBlockStart())
+                continue;
+        if (line == "error_page:")
+            if (isErrorPage())
+                continue;
+        if (line == "location:")
+            if (isLocation())
+                continue;
+        handleDirective(line);
     }
-
-    if (state.braceCount != 0)
-        throw std::runtime_error("Error: Unmatched opening brace");
-    if (state.inServerBlock)
-    {
-        if (state.inLocationBlock)
-        {
-            if (state.currentLocation.getRoot().empty())
-                throw std::runtime_error("Error: 'root' directive is missing in location block " + state.currentLocationName);
-            state.currentServer.addLocation(state.currentLocationName, state.currentLocation);
-        }
-        if (!state.listenSet)
-            throw std::runtime_error("Error: 'listen' directive is missing in server block");
-        _servers.push_back(state.currentServer);
-    }
+    validateServers();
+    file.close();
     return _servers;
 }
 
-void ConfigParser::handleServerBlock(std::istringstream &iss, ParserState &state, std::string &key)
+bool ConfigParser::serverBlockStart()
 {
-    std::string extra;
-    if (iss >> extra)
-        throw std::runtime_error("Error: Unexpected extra characters after '" + key + "'. Found: '" + extra + "'");
-    if (state.inServerBlock)
-        throw std::runtime_error("Error: New 'server' block started before the previous one was closed.");
-    state.inServerBlock = true;
-    state.inLocationBlock = false;
-    state.listenSet = false;
+    _inServer = true;
+    _inLocation = false;
+    _inError = false;
+    _servers.push_back(Server());
+    _currentServer = &_servers.back();
+    return true;
 }
 
-void ConfigParser::handleOpeningBrace(ParserState &state)
+bool ConfigParser::isErrorPage()
 {
-    if (!state.inServerBlock && !state.inLocationBlock)
-            throw std::runtime_error("Error: Unmatched opening brace '{'. No 'server' or 'location' block expected.");
-    state.braceCount++;
+    if (!_inServer || _inLocation || _inError)
+        throw std::runtime_error("Error: 'error_page' directive found in invalid context");
+    _inError = true;
+    return true;
 }
 
-void ConfigParser::handleLocationBlock(ParserState &state, std::istringstream &iss)
+bool ConfigParser::isLocation()
 {
-    if (!state.inServerBlock)
-        throw std::runtime_error("Error: 'location' directive found outside of server block");
-    if (state.inLocationBlock)
-        throw std::runtime_error("Error: New 'location' block started before the previous one was closed.");
-    state.inLocationBlock = true;
-    iss >> state.currentLocationName;
-}
-
-void ConfigParser::handleClosingBrace(ParserState &state, std::vector<Server> &_servers)
-{
-    state.braceCount--;
-    if (state.braceCount < 0)
-        throw std::runtime_error("Error: Unmatched closing brace '}'");
-    if (state.inLocationBlock)
+    if (_inServer)
     {
-        if (state.currentLocation.getRoot().empty())
-            throw std::runtime_error("Error: 'root' directive is missing in location block " + state.currentLocationName);
-        state.currentServer.addLocation(state.currentLocationName, state.currentLocation);
-        state.currentLocation = Location();
-        state.inLocationBlock = false;
-    }
-    else if (state.inServerBlock)
-    {
-        if (!state.listenSet)
-            throw std::runtime_error("Error: 'listen' directive is missing in server block");
-        _servers.push_back(state.currentServer);
-        state.currentServer = Server();
-        state.inServerBlock = false;
-    }
-}
-
-void ConfigParser::handleDirective(ParserState &state, std::string &key, std::istringstream &iss)
-{
-    if (!state.inServerBlock)
-        throw std::runtime_error("Error: Directive found outside of server block");
-    if (key == "listen")
-    {
-        std::string listen;
-        iss >> listen;
-        if (listen.back() == ';')
-            listen.pop_back();
-        state.currentServer.setListen(listen);
-        state.listenSet = true;
-    }
-    else if (key == "root")
-    {
-        std::string root;
-        iss >> root;
-        if (root.back() == ';')
-            root.pop_back();
-        state.currentLocation.setRoot(root);
-    }
-    else if (key == "index")
-    {
-        std::string index;
-        iss >> index;
-        if (index.back() == ';')
-            index.pop_back();
-        state.currentLocation.setIndex(index);
-    }
-    else if (key == "cgi_extension")
-    {
-        std::string ext;
-        iss >> ext;
-        if (ext.back() == ';')
-            ext.pop_back();
-        state.currentLocation.setCgiExtension(ext);
-    }
-    else if (key == "cgi_path")
-    {
-        std::string path;
-        iss >> path;
-        if (path.back() == ';')
-            path.pop_back();
-        state.currentLocation.setCgiPath(path);
-    }
-    else if (key == "autoindex")
-    {
-        std::string value;
-        iss >> value;
-        if (value.back() == ';')
-            value.pop_back();
-        state.currentLocation.setAutoindex(value == "on");
-    }
-    else if (key == "error_page")
-    {
-        int error_code;
-        std::string path;
-        iss >> error_code >> path;
-        if (path.back() == ';')
-            path.pop_back();
-        state.currentServer.setErrorPage(error_code, path);
-    }
-    else if (key == "client_max_body_size")
-    {
-        int size;
-        if (!(iss >> size) || size <= 0 || size > std::numeric_limits<int>::max())
-            throw std::runtime_error("Error: Invalid 'client_max_body_size' value");
-        state.currentServer.setClientMaxBodySize(size);
-    }
-    else if (key == "allow_methods")
-    {
-        std::vector<std::string> methods;
-        std::string method;
-        while (iss >> method)
-            methods.push_back(method);
-        state.currentLocation.setAllowMethods(methods);
+        _inLocation = true;
+        _inError = false;
+        _currentServer->addLocation();
     }
     else
-        throw std::runtime_error("Error: Unknown directive '" + key + "'");
+        throw std::runtime_error("Error: 'location' directive found outside of server block");
+    return true;
+}
+
+void ConfigParser::handleDirective(std::string &line)
+{
+    std::string key;
+    std::string value;
+    size_t pos;
+
+    line = line.substr(0, line.find('#'));
+    pos = line.find(':');
+    if (pos == std::string::npos)
+        throw std::runtime_error("Error: missing ':' in directive");
+    key = line.substr(0, pos);
+    value = line.substr(pos + 1);
+    if (_inError)
+        _currentServer->setErrorPage(key, value);
+    else if (_inLocation)
+        _currentServer->locationDirective(key, value);
+    else
+        _currentServer->serverDirective(key, value);
+}
+
+void ConfigParser::validateServers()
+{
+    for (std::vector<Server>::iterator it = _servers.begin(); it != (_servers.end() -1); it++)
+        for (std::vector<Server>::iterator it2 = it + 1; it2 != _servers.end(); it2++)
+            if (*it == *it2)
+                throw std::runtime_error("Error: Duplicate server block found");
+    for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+        if (it->isServerValid() == false)
+            throw std::runtime_error("Error: Invalid server block found");
 }

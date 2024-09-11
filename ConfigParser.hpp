@@ -2,22 +2,26 @@
 # define CONFIGPARSER_HPP
 
 # include "Server.hpp"
-# include "ParserState.hpp"
+# include <vector>
 
 class ConfigParser
 {
 	private:
 		std::vector<Server> _servers;
+		bool _inServer;
+		bool _inLocation;
+		bool _inError;
+		Server *_currentServer;
 	public:
-		static void checkArgument(const std::string &);
-		static bool isWhitespaceOrControl(char c);
-		static bool isLineEmptyOrWhitespace(const std::string &);
-		std::vector<Server>configFileParser(const std::string &);
-		void handleServerBlock(std::istringstream &, ParserState &, std::string &);
-		void handleOpeningBrace(ParserState &);
-		void handleLocationBlock(ParserState &, std::istringstream &);
-		void handleClosingBrace(ParserState &, std::vector<Server> &);
-		void handleDirective(ParserState &, std::string &, std::istringstream &);
+		ConfigParser();
+		~ConfigParser();
+		void checkArgument(std::string &);
+		std::vector<Server> configFileParser(std::string &);
+		bool serverBlockStart();
+		bool isErrorPage();
+		bool isLocation();
+		void handleDirective(std::string &);
+		void validateServers();
 };
 
 #endif

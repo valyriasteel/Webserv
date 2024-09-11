@@ -7,26 +7,21 @@
 class Location
 {
 	private:
-		std::vector<std::string> _allow_methods;
-		std::string _root;
+		std::string _path;
 		std::string _index;
-		std::string _cgi_path;
-		std::string _cgi_extension;
+		std::vector<std::string> _allowMethods;
 		bool _autoindex;
 	public:
 		Location();
-		void setAllowMethods(const std::vector<std::string> &);
-		void setRoot(const std::string &);
-		void setIndex(const std::string &);
-		void setCgiPath(const std::string &);
-		void setCgiExtension(const std::string &);
-		void setAutoindex(bool value);
-		const std::vector<std::string> &getAllowMethods() const;
-		const std::string &getRoot() const;
-		const std::string &getIndex() const;
-		const std::string &getCgiPath() const;
-		const std::string &getCgiExtension() const;
-		bool isAutoindex() const;
+		~Location();
+		void setPath(std::string &);
+		void setIndex(std::string &);
+		void setAllowMethods(std::string &);
+		void setAutoindex(bool);
+		std::string &getPath();
+		std::string &getIndex();
+		std::vector<std::string> &getAllowMethods();
+		bool &getAutoindex();
 };
 
 #endif

@@ -4,19 +4,9 @@ CXX = c++ -g
 SRCS = main.cpp \
 		Server.cpp \
 		Location.cpp \
-		ConfigParser.cpp \
-		ParserState.cpp
+		ConfigParser.cpp
 OBJS_DIR = obj/
-OBJS = main.o \
-		Server.o \
-		Location.o \
-		ConfigParser.o \
-		ParserState.o
-OBJS_PRE = $(OBJS_DIR)main.o \
-			$(OBJS_DIR)Server.o \
-			$(OBJS_DIR)Location.o \
-			$(OBJS_DIR)ConfigParser.o \
-			$(OBJS_DIR)ParserState.o
+OBJS = $(SRCS:%.cpp=$(OBJS_DIR)%.o)
 
 RM = rm -rf
 
@@ -27,8 +17,8 @@ RESET = \x1b[0m
 
 all: $(NAME)
 
-$(NAME): $(OBJS_PRE)
-	@$(CXX) $(CXXFLAGS) $(OBJS_PRE) -o $(NAME)
+$(NAME): $(OBJS)
+	@$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 	@printf "$(GREEN) Executable named Webserv created$(RESET)\n"
 
 $(OBJS_DIR)%.o: %.cpp

@@ -1,28 +1,20 @@
 #include "Location.hpp"
 #include "ConfigParser.hpp"
 
-std::vector<Server> servers;
-
 int main(int ac, char **av)
 {
 	try
 	{
     	if (ac != 2)
-			throw std::runtime_error("Usage: " + std::string(av[0]) + " <.conf extension file>");
+			throw std::invalid_argument("Usage: " + std::string(av[0]) + " <.conf extension file>");
 		
-    	const std::string &configFilePath = av[1];
+    	std::string configFilePath = av[1];
 
 		ConfigParser parser;
+		std::vector<Server> servers;
+		
 		parser.checkArgument(configFilePath);
     	servers = parser.configFileParser(configFilePath);
-
-    	for (size_t i = 0; i < servers.size(); ++i)
-		{
-    	    std::cout << "Server " << (i + 1) << " listening on " << servers[i].getListen() << ":" << servers[i].getPort() << std::endl;
-    	    const std::map<std::string, Location>& locations = servers[i].getLocations();
-    	    for (std::map<std::string, Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
-    	        std::cout << "  Location " << it->first << " root: " << it->second.getRoot() << std::endl;
-    	}
 	}
 	catch(const std::exception &e)
 	{

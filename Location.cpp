@@ -1,66 +1,72 @@
 #include "Location.hpp"
+#include <sstream>
 
 Location::Location()
 {
+	_path = "";
+	_index = "";
 	_autoindex = false;
+	_allowMethods = std::vector<std::string>();
 }
 
-void Location::setAllowMethods(const std::vector<std::string> &methods)
+Location::~Location()
 {
-	_allow_methods = methods;
+	
 }
 
-void Location::setRoot(const std::string &r)
+void Location::setPath(std::string &p)
 {
-	_root = r;
+	if (_path.empty() && !p.empty())
+		_path = p;
+	else
+		throw std::runtime_error("Error: Location path empty or full");
 }
 
-void Location::setIndex(const std::string &idx)
+void Location::setIndex(std::string &idx)
 {
-	_index = idx;
+	if (_index.empty() && !idx.empty())
+		_index = idx;
+	else
+		throw std::runtime_error("Error: Location index empty or full");
 }
 
-void Location::setCgiPath(const std::string &path)
+void Location::setAllowMethods(std::string &methods)
 {
-	_cgi_path = path;
-}
-
-void Location::setCgiExtension(const std::string &ext)
-{
-	_cgi_extension = ext;
+	if (_allowMethods.empty() && !methods.empty())
+	{
+		std::string method;
+		std::stringstream ss(methods);
+		while (std::getline(ss, method, ','))
+			_allowMethods.push_back(method);
+	}
+	else
+		throw std::runtime_error("Error: Location allow_methods empty or full");
 }
 
 void Location::setAutoindex(bool value)
 {
-	_autoindex = value;
+	if (!_autoindex)
+		_autoindex = value;
+	else
+		throw std::runtime_error("Error: Location autoindex already set");
 }
 
-const std::vector<std::string> &Location::getAllowMethods() const
+std::string& Location::getPath()
 {
-	return _allow_methods;
+	return _path;
 }
 
-const std::string &Location::getRoot() const
-{
-	return _root;
-}
-
-const std::string &Location::getIndex() const
+std::string& Location::getIndex()
 {
 	return _index;
 }
 
-const std::string &Location::getCgiPath() const
+std::vector<std::string>& Location::getAllowMethods()
 {
-	return _cgi_path;
+	return _allowMethods;
 }
 
-const std::string &Location::getCgiExtension() const
-{
-	return _cgi_extension;
-}
-
-bool Location::isAutoindex() const
+bool& Location::getAutoindex()
 {
 	return _autoindex;
 }

@@ -3,32 +3,45 @@
 
 # include <map>
 # include "Location.hpp"
-# include <netinet/in.h>
-
 
 class Server
 {
 	private:
-		std::map<std::string, int> _listen;
-		std::map<int, std::string> _error_pages;
-		int client_max_body_size;
-		std::map<std::string, Location> _locations;
+		Location *_currentLocation;
+		std::vector<Location> _locations;
+		std::map<int, std::string> _errorPages;
+		int _clientMaxBodySize;
 		int _port;
 		std::string _ip;
+		std::string _serverName;
+		std::string _serverRoot;
+		std::string _serverIndex;
 	public:
 		Server();
-		void setListen(const std::map<std::string, int> &);
-		void setErrorPage(int code, const std::string &);
-		void setClientMaxBodySize(int size);
-		void addLocation(const std::string &, const Location &);
-		const std::string &getListen() const;
-		const std::map<int, std::string> &getErrorPages() const;
-		int getClientMaxBodySize() const;
-		const std::map<std::string, Location> &getLocations() const;
-		int getPort() const;
-		std::string getIp() const;
+		~Server();
+		int stringToInt(std::string &);
+		void setErrorPage(std::string &, std::string &);
+		void locationDirective(std::string &, std::string &);
+		void addLocation();
+		void serverDirective(std::string &, std::string &);
+		void setName(std::string &);
+		void setRoot(std::string &);
+		void setIndex(std::string &);
+		void setIp(std::string &);
+		void setPort(int);
+		void setClientMaxBodySize(int);
+		bool isServerValid();
+		bool operator==(const Server &);
+		std::string &getServerName();
+		std::string &getServerRoot();
+		std::string &getServerIndex();
+		std::string &getIp();
+		int &getPort();
+		int &getClientMaxBodySize();
+		std::vector<Location> &getLocations();
+		std::map<int, std::string> &getErrorPages();
+		std::string &getErrorPath(int);
+		Location *getCurrentLocation();
 };
-
-extern std::vector<Server> servers;
 
 #endif

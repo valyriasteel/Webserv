@@ -35,6 +35,7 @@ void ConfigParser::checkArgument(std::string &configFile)
 
 std::vector<Server> ConfigParser::configFileParser(std::string &configFile)
 {
+    checkArgument(configFile);
     std::ifstream file(configFile.c_str());
     std::string line;
 

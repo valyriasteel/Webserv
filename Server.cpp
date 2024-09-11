@@ -80,7 +80,7 @@ void Server::setName(std::string &name)
 	if (_serverName.empty() && !name.empty())
 		_serverName = name;
 	else
-		throw std::runtime_error("Error: Server name empty");
+		throw std::runtime_error("Error: Server name empty or already set");
 }
 
 void Server::setRoot(std::string &root)
@@ -88,7 +88,7 @@ void Server::setRoot(std::string &root)
 	if (_serverRoot.empty() || !root.empty())
 		_serverRoot = root;
 	else
-		throw std::runtime_error("Error: Server root already exists");
+		throw std::runtime_error("Error: Server root empty or already set");
 }
 
 void Server::setIndex(std::string &index)
@@ -96,7 +96,7 @@ void Server::setIndex(std::string &index)
 	if (_serverIndex.empty() || !index.empty())
 		_serverIndex = index;
 	else
-		throw std::runtime_error("Error: Server index already exists");
+		throw std::runtime_error("Error: Server index empty or already set");
 }
 
 void Server::setIp(std::string &ip)
@@ -104,7 +104,7 @@ void Server::setIp(std::string &ip)
 	if (_ip.empty() || !ip.empty())
 		_ip = ip;
 	else
-		throw std::runtime_error("Error: Server ip already exists");
+		throw std::runtime_error("Error: Server ip empty or already set");
 }
 
 void Server::setPort(int port)
@@ -112,7 +112,7 @@ void Server::setPort(int port)
 	if (port > 0 && port < 65536 && _port == -1)
 		_port = port;
 	else
-		throw std::runtime_error("Error: Server port already exists");
+		throw std::runtime_error("Error: Server port empty or already set");
 }
 
 void Server::setClientMaxBodySize(int size)
@@ -120,7 +120,7 @@ void Server::setClientMaxBodySize(int size)
 	if (_clientMaxBodySize == -1 || size != -1)
 		_clientMaxBodySize = size;
 	else
-		throw std::runtime_error("Error: Server client_max_body_size already exists");
+		throw std::runtime_error("Error: Server client_max_body_size empty or already set");
 }
 
 void Server::serverDirective(std::string &key, std::string &value)

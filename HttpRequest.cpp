@@ -5,9 +5,7 @@
 #include <unistd.h>
 
 HttpRequest::HttpRequest()
-{
-
-}
+{}
 
 HttpRequest::~HttpRequest()
 {}
@@ -37,7 +35,7 @@ void HttpRequest::handleHttpRequest(int client_fd, const std::string &request)
 			
             	std::string response = "HTTP/1.1 200 OK\r\nContent-Type: " + contentType + "\r\nContent-Length: " + std::to_string(content.size()) + "\r\n\r\n" + content;
             	sendResponse(client_fd, response);
-			}
+			} 
 			else
 			{
             	std::string response = "HTTP/1.1 404 Not Found\r\nContent-Length: 13\r\n\r\nFile Not Found";
@@ -95,7 +93,12 @@ void HttpRequest::parseHttpRequestUrl()
 
 	if(std::getline(requestlocation, _locationurl, '/'))
 	{
-		std::getline(requestlocation, _locationurlfile);
+		std::string remaining;
+		if(std::getline(requestlocation, remaining))
+			_locationurlfile = remaining;
+		else
+			_locationurlfile = "";
+		
 		_locationurl = "/" + _locationurl;
 	}
 }
@@ -201,9 +204,7 @@ bool HttpRequest::isItAllowMethod(const std::string& location, std::vector<Serve
 				for (std::vector<std::string>::const_iterator it2 = allowmethods.begin(); it2 != allowmethods.end(); ++it2) 
 				{
     				if(*it2 == method)
-					{
 						return true;
-					}
 				}
 				return false;
 			}		

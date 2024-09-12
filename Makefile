@@ -4,7 +4,9 @@ CXX = c++ -g
 SRCS = main.cpp \
 		Server.cpp \
 		Location.cpp \
-		ConfigParser.cpp
+		ConfigParser.cpp \
+		ServerSocket.cpp \
+		HttpRequest.cpp
 OBJS_DIR = obj/
 OBJS = $(SRCS:%.cpp=$(OBJS_DIR)%.o)
 

@@ -27,6 +27,8 @@ int main(int ac, char **av)
 		
     	servers = parser.configFileParser(configFilePath);
 		serverinfo(servers);
+		Server server1(80);
+		server1.serverRun();
 	}
 	catch(const std::exception &e)
 	{

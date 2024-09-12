@@ -2,6 +2,7 @@
 # define SERVER_HPP
 
 # include <map>
+# include <netinet/in.h>
 # include "Location.hpp"
 
 class Server
@@ -16,8 +17,15 @@ class Server
 		std::string _serverName;
 		std::string _serverRoot;
 		std::string _serverIndex;
+		int _socket_fd;
+		struct sockaddr_in _server_addr;
+		fd_set _read_fd;
+		fd_set _write_fd;
+		fd_set _master_fd;
+		std::map<int, std::string> _client_requests; //her istemci için gelen isteği saklamak için
 	public:
 		Server();
+		Server(int port);
 		~Server();
 		int stringToInt(std::string &);
 		void setErrorPage(std::string &, std::string &);
@@ -42,6 +50,14 @@ class Server
 		std::map<int, std::string> &getErrorPages();
 		std::string &getErrorPath(int);
 		Location *getCurrentLocation();
+		bool initSocket();
+		bool bindSocket();
+		bool listenSocket();
+		bool acceptSocket();
+		bool serverRun();
+		bool readRequest(int client_fd);
+		bool requestNewConnection(int &max_fd);
+		bool closeSocket();
 };
 
 #endif

@@ -19,7 +19,7 @@ void Location::setPath(std::string &p)
 	if (_path.empty() && !p.empty())
 		_path = p;
 	else
-		throw std::runtime_error("Error: Location path empty or full");
+		throw std::runtime_error("Error: Location path empty or already set");
 }
 
 void Location::setIndex(std::string &idx)
@@ -27,7 +27,7 @@ void Location::setIndex(std::string &idx)
 	if (_index.empty() && !idx.empty())
 		_index = idx;
 	else
-		throw std::runtime_error("Error: Location index empty or full");
+		throw std::runtime_error("Error: Location index empty or already set");
 }
 
 void Location::setAllowMethods(std::string &methods)
@@ -40,7 +40,7 @@ void Location::setAllowMethods(std::string &methods)
 			_allowMethods.push_back(method);
 	}
 	else
-		throw std::runtime_error("Error: Location allow_methods empty or full");
+		throw std::runtime_error("Error: Location allow_methods empty or already set");
 }
 
 void Location::setAutoindex(bool value)

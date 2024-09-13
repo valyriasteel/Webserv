@@ -18,10 +18,11 @@ class Location
 		void setIndex(std::string &);
 		void setAllowMethods(std::string &);
 		void setAutoindex(bool);
+		bool validateMethod(std::string &);
+		bool &getAutoindex();
 		std::string &getPath();
 		std::string &getIndex();
 		std::vector<std::string> &getAllowMethods();
-		bool &getAutoindex();
 };
 
 #endif

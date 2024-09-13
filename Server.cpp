@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include <sstream>
+#include <iomanip>
 
 Server::Server()
 {
@@ -9,9 +10,9 @@ Server::Server()
 	_ip = "";
 	_port = -1;
 	_clientMaxBodySize = -1;
-	_locations.reserve(0);
-	_errorPages.clear();
-	_currentLocation = nullptr;
+	_locations = std::vector<Location>();
+	_errorPages = std::map<int, std::string>();
+	_currentLocation = NULL;
 }
 
 Server::Server(int port) : _port(port)
@@ -51,7 +52,7 @@ int Server::stringToInt(std::string &str)
     int num;
     ss >> num;
     if (ss.fail())
-        throw std::runtime_error("Error: Invalid number format");
+        throw std::runtime_error("Error: Invalid number");
     return num;
 }
 
@@ -61,7 +62,7 @@ void Server::setErrorPage(std::string &code, std::string &path)
 	if (code_int >= 100 && code_int < 600 && _errorPages.find(code_int) == _errorPages.end())
 		_errorPages[code_int] = path;
 	else
-		throw std::runtime_error("Error: Invalid error code or error code already exists");
+		throw std::runtime_error("Error: Invalid error code or error code already set");
 }
 
 void Server::locationDirective(std::string &key, std::string &value)
@@ -95,7 +96,7 @@ void Server::setName(std::string &name)
 
 void Server::setRoot(std::string &root)
 {
-	if (_serverRoot.empty() || !root.empty())
+	if (_serverRoot.empty() && !root.empty())
 		_serverRoot = root;
 	else
 		throw std::runtime_error("Error: Server root empty or already set");
@@ -103,7 +104,7 @@ void Server::setRoot(std::string &root)
 
 void Server::setIndex(std::string &index)
 {
-	if (_serverIndex.empty() || !index.empty())
+	if (_serverIndex.empty() && !index.empty())
 		_serverIndex = index;
 	else
 		throw std::runtime_error("Error: Server index empty or already set");
@@ -111,7 +112,7 @@ void Server::setIndex(std::string &index)
 
 void Server::setIp(std::string &ip)
 {
-	if (_ip.empty() || !ip.empty())
+	if (_ip.empty() && !ip.empty())
 		_ip = ip;
 	else
 		throw std::runtime_error("Error: Server ip empty or already set");
@@ -119,7 +120,7 @@ void Server::setIp(std::string &ip)
 
 void Server::setPort(int port)
 {
-	if (port > 0 && port < 65536 && _port == -1)
+	if (port > 0 && port < 65535 && _port == -1)
 		_port = port;
 	else
 		throw std::runtime_error("Error: Server port empty or already set");
@@ -127,7 +128,7 @@ void Server::setPort(int port)
 
 void Server::setClientMaxBodySize(int size)
 {
-	if (_clientMaxBodySize == -1 || size != -1)
+	if (_clientMaxBodySize == -1 && size >= 0)
 		_clientMaxBodySize = size;
 	else
 		throw std::runtime_error("Error: Server client_max_body_size empty or already set");
@@ -202,4 +203,16 @@ std::string& Server::getErrorPath(int code)
 Location* Server::getCurrentLocation()
 {
 	return _currentLocation;
+}
+
+void Server::serverInfo(std::vector<Server> &server)
+{
+	int totalWidth = 80;
+	std::cout << "\033[32m" "┌" "\033[1m" "SERVER" << (server.size() == 1 ? "─" : "S") << " INFO" "\033[0m" "\033[32m" "──────────────────────────────────────────────────────────────┐" "\033[0m" "\n";
+	for (std::vector<Server>::iterator it = server.begin(); it != server.end(); it++)
+	{
+		std::string serverInfo = " Server " "\033[1m" + it->getServerName() +  "\033[0m" " is running on " "\033[1m" + it->getIp() + "\033[0m" " and listening on port " "\033[1m" + std::to_string(it->getPort()) + "\033[0m";
+		std::cout << "\033[32m" "│" "\033[0m" << std::left << std::setw(totalWidth + 18) << serverInfo << "\033[32m" "│" "\033[0m" "\n";
+	}
+	std::cout << "\033[32m" "└──────────────────────────────────────────────────────────────────────────┘" "\033[0m" << std::endl;
 }

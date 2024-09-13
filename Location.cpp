@@ -37,7 +37,10 @@ void Location::setAllowMethods(std::string &methods)
 		std::string method;
 		std::stringstream ss(methods);
 		while (std::getline(ss, method, ','))
-			_allowMethods.push_back(method);
+		{
+			if (validateMethod(method))
+				_allowMethods.push_back(method);
+		}
 	}
 	else
 		throw std::runtime_error("Error: Location allow_methods empty or already set");
@@ -69,4 +72,15 @@ std::vector<std::string>& Location::getAllowMethods()
 bool& Location::getAutoindex()
 {
 	return _autoindex;
+}
+
+bool Location::validateMethod(std::string &method)
+{
+	std::string validMethods[3] = {"GET", "POST", "DELETE"};
+	for (int i = 0; i < 3; i++)
+	{
+		if (method == validMethods[i])
+			return true;
+	}
+	throw std::runtime_error("Error: Invalid method in allow_methods");
 }

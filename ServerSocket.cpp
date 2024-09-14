@@ -5,27 +5,27 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-
-bool Server::initSocket()
+int Server::initSocket()
 {
 	_socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(_socket_fd == -1)
-		return false;
+		throw std::runtime_error("Error: Socket initialization failed");
 	int opt = 1;
 	if (setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
-	{
-		std::cout << "Error: Failed to set socket options" << std::endl;
-		return false;
-	}
+		throw std::runtime_error("Error: Failed to set socket options");
 	if(fcntl(_socket_fd, F_SETFL, O_NONBLOCK) == -1)
-		return false;
+		throw std::runtime_error("Error: Failet to set nonblocking mod.");
 	_server_addr.sin_family = AF_INET;
 	_server_addr.sin_addr.s_addr = inet_addr(this->getIp().c_str());
 	_server_addr.sin_port = htons(this->getPort());
-	return true;
+    if(bind(_socket_fd, (struct sockaddr *)&_server_addr, sizeof(_server_addr)) == -1)
+        throw std::runtime_error("Error: Socket binding failed");
+    if(listen(_socket_fd, 5) == -1)
+        throw std::runtime_error("Error: Socket listening failed");
+    return (_socket_fd);
 }
 
-bool Server::bindSocket()
+/* bool Server::bindSocket()
 {
     if(bind(_socket_fd, (struct sockaddr *)&_server_addr, sizeof(_server_addr)) == -1)
         return false;
@@ -37,26 +37,26 @@ bool Server::listenSocket()
     if(listen(_socket_fd, 5) == -1)
         return false;
     return true;
-}
-
+} */
+/* 
 bool Server::serverRun()
 {
     acceptSocket();
     return true;
 }
-
+ */
 bool Server::acceptSocket()
 {
     FD_ZERO(&_read_fd);
     FD_ZERO(&_write_fd);
     FD_ZERO(&_master_fd);
+    int max_fd = -1;  // Başlangıç için küçük bir değer
+    
     FD_SET(_socket_fd, &_master_fd);
     int max_fd = _socket_fd;
 
     while(true)
     {
-        FD_ZERO(&_read_fd); // bu iki satırı bir düşün
-        FD_ZERO(&_write_fd);
         _read_fd = _master_fd; // `select()` için `read_fds` kümesini güncelle
         _write_fd = _master_fd; // `select()` için `write_fds` kümesini güncelle
         int activity = select(max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);

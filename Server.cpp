@@ -15,7 +15,7 @@ Server::Server()
 	_currentLocation = NULL;
 }
 
-void Server::serverStart()
+/* void Server::serverStart()
 {
 	if(!initSocket())
 		throw std::runtime_error("Error: Socket initialization failed");
@@ -23,7 +23,8 @@ void Server::serverStart()
 		throw std::runtime_error("Error: Socket binding failed");
 	if(!listenSocket())
 		throw std::runtime_error("Error: Socket listening failed");
-}
+	_sockets.push_back(_socket_fd);
+} */
 
 Server::~Server()
 {

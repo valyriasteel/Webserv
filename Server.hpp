@@ -4,6 +4,7 @@
 # include <map>
 # include <netinet/in.h>
 # include "Location.hpp"
+# include <vector>
 
 class Server
 {
@@ -24,6 +25,7 @@ class Server
 		fd_set _read_fd;
 		fd_set _write_fd;
 		fd_set _master_fd;
+
 	public:
 		Server();
 		~Server();
@@ -52,7 +54,7 @@ class Server
 		std::map<int, std::string> &getErrorPages();
 		Location *getCurrentLocation();	
 
-		bool initSocket();
+		int initSocket();
 		bool bindSocket();
 		bool listenSocket();
 		bool acceptSocket();

@@ -19,17 +19,17 @@ class HttpRequest
     public:
         HttpRequest();
         ~HttpRequest();
-        static void handleHttpRequest(int client_fd, const std::string &); 
+        static void handleHttpRequest(int client_fd, const std::string &, Server &); 
         static HttpRequest parseHttpRequest(const std::string &);
         void parseHttpRequestUrl();
-        static std::string controlLocationUrl(const std::string &, std::vector<Server>&);
+        static std::string controlLocationUrl(const std::string &, Server &);
         static void handlePostRequest(int client_fd, const std::string& body);
         static void handleDeleteRequest(int client_fd, const std::string&, const std::string&);
         static void handleUnAllowedRequest(int client_fd);
         static void sendResponse(int client_fd, const std::string& response);
         static std::string getContentType(const std::string &fileName);
-        static bool isItAllowMethod(const std::string &, std::vector<Server>&, const std::string &);
-        static std::string getRootPath(const std::string &, std::vector<Server>&);
+        static bool isItAllowMethod(const std::string &, Server &, const std::string &);
+        static std::string getRootPath(const std::string &, Server &);
 };
 
 #endif

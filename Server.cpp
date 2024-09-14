@@ -15,7 +15,7 @@ Server::Server()
 	_currentLocation = NULL;
 }
 
-Server::Server(int port) : _port(port)
+void Server::serverStart()
 {
 	if(!initSocket())
 		throw std::runtime_error("Error: Socket initialization failed");

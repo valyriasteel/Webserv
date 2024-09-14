@@ -20,8 +20,8 @@ bool Server::initSocket()
 	if(fcntl(_socket_fd, F_SETFL, O_NONBLOCK) == -1)
 		return false;
 	_server_addr.sin_family = AF_INET;
-	_server_addr.sin_addr.s_addr = INADDR_ANY;
-	_server_addr.sin_port = htonl(_port);
+	_server_addr.sin_addr.s_addr = inet_addr(this->getIp().c_str());
+	_server_addr.sin_port = htons(this->getPort());
 	return true;
 }
 
@@ -121,7 +121,7 @@ bool Server::readRequest(int client_fd)
 
     if (_client_requests[client_fd].find("\r\n\r\n") != std::string::npos) //// Tam bir HTTP isteği alındıysa işle
     {
-        HttpRequest::handleHttpRequest(client_fd, _client_requests[client_fd]);
+        HttpRequest::handleHttpRequest(client_fd, _client_requests[client_fd], *this);
         _client_requests.erase(client_fd);
         return true;
     }

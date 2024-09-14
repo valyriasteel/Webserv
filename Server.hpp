@@ -60,7 +60,7 @@ class Server
 		bool readRequest(int client_fd);
 		bool requestNewConnection(int &);
 		bool closeSocket();
-		Server(int port);
+		void serverStart();
 };
 
 #endif

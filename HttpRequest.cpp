@@ -10,7 +10,7 @@ HttpRequest::HttpRequest()
 HttpRequest::~HttpRequest()
 {}
 
-void HttpRequest::handleHttpRequest(int client_fd, const std::string &request)
+void HttpRequest::handleHttpRequest(int client_fd, const std::string &request, Server &server)
 {
 	HttpRequest httpRequest = HttpRequest::parseHttpRequest(request);
 	std::cout << "Method: " << httpRequest._method << std::endl;
@@ -19,11 +19,11 @@ void HttpRequest::handleHttpRequest(int client_fd, const std::string &request)
 
 	httpRequest.parseHttpRequestUrl();
 
-	if(isItAllowMethod(httpRequest._locationurl, servers, httpRequest._method))
+	if(isItAllowMethod(httpRequest._locationurl, server, httpRequest._method))
 	{
 		if (httpRequest._method == "GET")
 		{
-			std::string indexFile =  controlLocationUrl(httpRequest._locationurl, servers);
+			std::string indexFile =  controlLocationUrl(httpRequest._locationurl, server);
 
 			std::ifstream file(indexFile, std::ios::binary);
 			if (file.is_open())
@@ -103,15 +103,12 @@ void HttpRequest::parseHttpRequestUrl()
 	}
 }
 
-std::string HttpRequest::controlLocationUrl(const std::string &location, std::vector<Server>& servers)
+std::string HttpRequest::controlLocationUrl(const std::string &location, Server &server)
 {
-	for (size_t i = 0; i < servers.size(); ++i)
-	{
-    	const std::map<std::string, Location>& locations = servers[i].getLocations();
-    	for (std::map<std::string, Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
-			if(it->first == location)
-				return it->second.getIndex();	
-	}
+    std::vector<Location>& locations = server.getLocations();
+    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++)
+		if(it->getPath() == location)
+			return it->getIndex();	
 	throw std::runtime_error("Error: Location was not found.");
 }
 
@@ -191,36 +188,30 @@ std::string HttpRequest::getContentType(const std::string &fileName)
     return "application/octet-stream";
 }
 
-bool HttpRequest::isItAllowMethod(const std::string& location, std::vector<Server>& servers, const std::string &method)
+bool HttpRequest::isItAllowMethod(const std::string& location, Server &server, const std::string &method)
 {
-	for (size_t i = 0; i < servers.size(); ++i)
+    std::vector<Location>& locations = server.getLocations();
+    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++)
 	{
-    	const std::map<std::string, Location>& locations = servers[i].getLocations();
-    	for (std::map<std::string, Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
+		if(it->getPath() == location)
 		{
-			if(it->first == location)
+			std::vector<std::string> &allowmethods = it->getAllowMethods();
+			for (std::vector<std::string>::iterator it2 = allowmethods.begin(); it2 != allowmethods.end(); ++it2) 
 			{
-				const std::vector<std::string> &allowmethods = it->second.getAllowMethods();
-				for (std::vector<std::string>::const_iterator it2 = allowmethods.begin(); it2 != allowmethods.end(); ++it2) 
-				{
-    				if(*it2 == method)
-						return true;
-				}
-				return false;
-			}		
-    	}
-	}
+    			if(*it2 == method)
+					return true;
+			}
+			return false;
+		}		
+    }
 	return false;
 }
 
-std::string HttpRequest::getRootPath(const std::string & location, std::vector<Server>& servers)
+std::string HttpRequest::getRootPath(const std::string &location, Server &server)
 {
-	for (size_t i = 0; i < servers.size(); ++i)
-	{
-    	const std::map<std::string, Location>& locations = servers[i].getLocations();
-    	for (std::map<std::string, Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
-			if(it->first == location)
-				return it->second.getRoot();	
-	}
+    std::vector<Location>& locations = server.getLocations();
+    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it)
+		if(it->getPath() == location)
+			return server.getServerRoot();
 	throw std::runtime_error("Error: Location was not found.");
 }

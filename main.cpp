@@ -14,6 +14,11 @@ int main(int ac, char **av)
 		
     	servers = parser.configFileParser(configFilePath);
 		Server::serverInfo(servers);
+		for (std::vector<Server>::iterator it = servers.begin(); it != servers.end(); ++it)
+		{
+			it->serverStart();
+			it->serverRun();
+		}
 	}
 	catch(const std::exception &e)
 	{

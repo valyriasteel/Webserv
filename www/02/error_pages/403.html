@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #141414;
+            overflow: hidden;
+            color: white;
+        }
+
+        h1 {
+            font-size: 100px;
+            margin: 0;
+            animation: neon 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes neon {
+            0% {
+                text-shadow: 0 0 10px #e74c3c, 0 0 20px #e74c3c, 0 0 30px #e74c3c, 0 0 40px #ff6b6b;
+            }
+            100% {
+                text-shadow: 0 0 20px #ff6b6b, 0 0 30px #ff6b6b, 0 0 40px #ff6b6b, 0 0 50px #e74c3c;
+            }
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        p {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        a {
+            text-decoration: none;
+            color: #ff6b6b;
+            font-size: 24px;
+            border: 2px solid #ff6b6b;
+            padding: 10px 20px;
+            border-radius: 50px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #ff6b6b;
+            color: #141414;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>403</h1>
+        <p>You are not allowed to access this page!</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Webserv</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            position: relative;
+            background-color: #282c34;
+            color: white;
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('documents/geo.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: -1;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 4rem;
+            background: linear-gradient(135deg, #ff6b6b, #f8c291);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+            margin: 0;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% {
+            opacity: 1;
+        }
+            50% {
+            opacity: 0;
+        }
+}
+
+
+        .content {
+            text-align: center;
+            z-index: 1;
+            color: #fff;
+        }
+
+        .content h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ffffff;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.9);
+        }
+
+        .authors {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .author {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(100, 100, 100, 0.5);
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .author:hover {
+            background-color: rgba(100, 100, 100, 0.7);
+            transform: scale(1.05);
+        }
+
+        .author img {
+            width: 50px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        .author button {
+            font-size: 1.1rem;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #8e44ad, #3498db);
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(142, 68, 173, 0.5);
+        }
+
+        .author button:hover {
+            background: linear-gradient(135deg, #9b59b6, #2980b9);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+
+    <div class="header">
+        <h1>Experience the Power of Webserv</h1>
+    </div>
+
+    <div class="content">
+        <h2>Meet the Team</h2>
+        <div class="authors">
+            <div class="author">
+                <img src="documents/stark.png" alt="Stark Sigil">
+                <button onclick="window.location.href='berat/berat.html'">Berat Boşnak</button>
+            </div>
+            <div class="author">
+                <img src="documents/targaryen.png" alt="Targaryen Sigil">
+                <button onclick="window.location.href='busra/busra.html'">Büşra Yılmaz</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -6,7 +6,6 @@ Location::Location()
 	_path = "";
 	_index = "";
 	_autoindex = false;
-	_allowMethods = std::vector<std::string>();
 }
 
 Location::~Location()
@@ -46,6 +45,17 @@ void Location::setAllowMethods(std::string &methods)
 		throw std::runtime_error("Error: Location allow_methods empty or already set");
 }
 
+bool Location::validateMethod(std::string &method)
+{
+	std::string validMethods[3] = {"GET", "POST", "DELETE"};
+	for (int i = 0; i < 3; i++)
+	{
+		if (method == validMethods[i])
+			return true;
+	}
+	throw std::runtime_error("Error: Invalid method in allow_methods");
+}
+
 void Location::setAutoindex(bool value)
 {
 	if (!_autoindex)
@@ -74,13 +84,12 @@ bool& Location::getAutoindex()
 	return _autoindex;
 }
 
-bool Location::validateMethod(std::string &method)
+bool Location::checkMethod(std::string &method)
 {
-	std::string validMethods[3] = {"GET", "POST", "DELETE"};
-	for (int i = 0; i < 3; i++)
+	for (std::vector<std::string>::iterator it = _allowMethods.begin(); it != _allowMethods.end(); it++)
 	{
-		if (method == validMethods[i])
+		if (*it == method)
 			return true;
 	}
-	throw std::runtime_error("Error: Invalid method in allow_methods");
+	return false;
 }

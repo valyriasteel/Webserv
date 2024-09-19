@@ -7,7 +7,6 @@ ConfigParser::ConfigParser()
     _inLocation = false;
     _inError = false;
     _currentServer = NULL;
-    _servers = std::vector<Server>();
 }
 
 ConfigParser::~ConfigParser()
@@ -15,7 +14,7 @@ ConfigParser::~ConfigParser()
     _servers.clear();
 }
 
-void ConfigParser::checkArgument(const std::string &configFile)
+void ConfigParser::checkArgument(const std::string &configFile) const
 {
     const std::string &confExtension = ".conf";
     size_t extensionPos = configFile.rfind(confExtension);
@@ -30,7 +29,11 @@ void ConfigParser::checkArgument(const std::string &configFile)
     if (!file.is_open())
         throw std::runtime_error("Error: Cannot open config file " + configFile);
     if (file.peek() == std::ifstream::traits_type::eof())
+    {
+        file.close();
         throw std::runtime_error("Error: Config file " + configFile + " is empty");
+    }
+    file.close();
 }
 
 std::vector<Server> ConfigParser::configFileParser(const std::string &configFile)
@@ -64,16 +67,18 @@ bool ConfigParser::serverBlockStart()
 {
     _inLocation = false;
     _inError = false;
+    _inServer = true;
     _servers.push_back(Server());
     _currentServer = &_servers.back();
-    return (_inServer = true);
+    return true;
 }
 
 bool ConfigParser::isErrorPage()
 {
     if (!_inServer || _inLocation || _inError)
         throw std::runtime_error("Error: 'error_page' directive found in invalid context");
-    return (_inError = true);
+    _inError = true;
+    return true;
 }
 
 bool ConfigParser::isLocation()
@@ -81,11 +86,12 @@ bool ConfigParser::isLocation()
     if (_inServer)
     {
         _inError = false;
+        _inLocation = true;
         _currentServer->addLocation();
     }
     else
         throw std::runtime_error("Error: 'location' directive found outside of server block");
-    return (_inLocation = true);
+    return true;
 }
 
 void ConfigParser::handleDirective(std::string &line)

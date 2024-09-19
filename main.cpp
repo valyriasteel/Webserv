@@ -1,6 +1,5 @@
 #include "ConfigParser.hpp"
-
-void run_server();
+#include "ServerManager.hpp"
 
 int main(int ac, char **av)
 {
@@ -13,29 +12,16 @@ int main(int ac, char **av)
 
 		ConfigParser parser;
 		std::vector<Server> servers;
-		std::vector<int> _sockets;
 		
     	servers = parser.configFileParser(configFilePath);
-		Server::serverInfo(servers);
-		for (std::vector<Server>::iterator it = servers.begin(); it != servers.end(); ++it)
-		{
-			int socked_fd = it->initSocket();
-			_sockets.push_back(socked_fd);
-		}
-
-		 run_server();
+		Server::printServerInfo(servers);
+		ServerManager manager(servers);
+		manager.initializeSockets();
+		manager.run();
 	}
 	catch(const std::exception &e)
 	{
 		std::cout << e.what() << std::endl;
 	}
 	return 0;
-}
-
-void run_server()
-{
-	while (true)
-	{
-
-	}
 }

@@ -2,7 +2,6 @@
 # define CONFIGPARSER_HPP
 
 # include "Server.hpp"
-# include <vector>
 
 class ConfigParser
 {
@@ -20,7 +19,7 @@ class ConfigParser
 		bool isLocation();
 		bool isErrorPage();
 		bool serverBlockStart();
-		void checkArgument(const std::string &);
+		void checkArgument(const std::string &) const;
 		std::vector<Server> configFileParser(const std::string &);
 };
 

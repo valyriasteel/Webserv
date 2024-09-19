@@ -5,8 +5,7 @@ SRCS = main.cpp \
 		Server.cpp \
 		Location.cpp \
 		ConfigParser.cpp \
-		ServerSocket.cpp \
-		HttpRequest.cpp
+		ServerManager.cpp
 OBJS_DIR = obj/
 OBJS = $(SRCS:%.cpp=$(OBJS_DIR)%.o)
 

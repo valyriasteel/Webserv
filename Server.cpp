@@ -10,21 +10,8 @@ Server::Server()
 	_ip = "";
 	_port = -1;
 	_clientMaxBodySize = -1;
-	_locations = std::vector<Location>();
-	_errorPages = std::map<int, std::string>();
 	_currentLocation = NULL;
 }
-
-/* void Server::serverStart()
-{
-	if(!initSocket())
-		throw std::runtime_error("Error: Socket initialization failed");
-	if(!bindSocket())
-		throw std::runtime_error("Error: Socket binding failed");
-	if(!listenSocket())
-		throw std::runtime_error("Error: Socket listening failed");
-	_sockets.push_back(_socket_fd);
-} */
 
 Server::~Server()
 {
@@ -135,6 +122,11 @@ void Server::setClientMaxBodySize(int size)
 		throw std::runtime_error("Error: Server client_max_body_size empty or already set");
 }
 
+void Server::setFd(int fd)
+{
+	_fd = fd;
+}
+
 void Server::serverDirective(std::string &key, std::string &value)
 {
 	std::string serverSet[6] = {"server_name", "root", "index", "host", "port", "client_max_body_size"};
@@ -174,12 +166,12 @@ std::string& Server::getIp()
 	return _ip;
 }
 
-int& Server::getPort()
+int Server::getPort()
 {
 	return _port;
 }
 
-int& Server::getClientMaxBodySize()
+int Server::getClientMaxBodySize()
 {
 	return _clientMaxBodySize;
 }
@@ -206,7 +198,12 @@ Location* Server::getCurrentLocation()
 	return _currentLocation;
 }
 
-void Server::serverInfo(std::vector<Server> &server)
+int Server::getFd()
+{
+	return _fd;
+}
+
+void Server::printServerInfo(std::vector<Server> &server)
 {
 	int totalWidth = 80;
 	std::cout << "\033[32m" "┌" "\033[1m" "SERVER" << (server.size() == 1 ? "─" : "S") << " INFO" "\033[0m" "\033[32m" "──────────────────────────────────────────────────────────────┐" "\033[0m" "\n";

@@ -20,6 +20,7 @@ class Location
 		void setAutoindex(bool);
 		bool validateMethod(std::string &);
 		bool &getAutoindex();
+		bool checkMethod(std::string &);
 		std::string &getPath();
 		std::string &getIndex();
 		std::vector<std::string> &getAllowMethods();

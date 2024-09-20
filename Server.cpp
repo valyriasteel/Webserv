@@ -18,7 +18,7 @@ Server::~Server()
 	_locations.clear();
 }
 
-bool Server::operator==(const Server &server)
+bool Server::operator==(const Server &server) const
 {
 	bool name = _serverName == server._serverName;
 	bool port = _port == server._port;
@@ -27,14 +27,14 @@ bool Server::operator==(const Server &server)
 	return name || (port && ip);
 }
 
-bool Server::isServerValid()
+bool Server::isServerValid() const
 {
 	if (_serverName.empty() || _port == -1 || _ip.empty() || _serverRoot.empty() || _serverIndex.empty() || _locations.empty() || _clientMaxBodySize == -1 || _errorPages.empty())
 		return false;
 	return true;
 }
 
-int Server::stringToInt(std::string &str)
+int Server::stringToInt(const std::string &str)
 {
     std::stringstream ss(str);
     int num;
@@ -44,7 +44,7 @@ int Server::stringToInt(std::string &str)
     return num;
 }
 
-void Server::setErrorPage(std::string &code, std::string &path)
+void Server::setErrorPage(const std::string &code, const std::string &path)
 {
 	int code_int = stringToInt(code);
 	if (code_int >= 100 && code_int < 600 && _errorPages.find(code_int) == _errorPages.end())
@@ -53,7 +53,7 @@ void Server::setErrorPage(std::string &code, std::string &path)
 		throw std::runtime_error("Error: Invalid error code or error code already set");
 }
 
-void Server::locationDirective(std::string &key, std::string &value)
+void Server::locationDirective(const std::string &key, const std::string &value)
 {
 	std::string locationSet[4] = {"path", "allow_methods", "index", "autoindex"};
 	if (key == locationSet[0])
@@ -74,7 +74,7 @@ void Server::addLocation()
 	_currentLocation = &_locations.back();
 }
 
-void Server::setName(std::string &name)
+void Server::setName(const std::string &name)
 {
 	if (_serverName.empty() && !name.empty())
 		_serverName = name;
@@ -82,7 +82,7 @@ void Server::setName(std::string &name)
 		throw std::runtime_error("Error: Server name empty or already set");
 }
 
-void Server::setRoot(std::string &root)
+void Server::setRoot(const std::string &root)
 {
 	if (_serverRoot.empty() && !root.empty())
 		_serverRoot = root;
@@ -90,7 +90,7 @@ void Server::setRoot(std::string &root)
 		throw std::runtime_error("Error: Server root empty or already set");
 }
 
-void Server::setIndex(std::string &index)
+void Server::setIndex(const std::string &index)
 {
 	if (_serverIndex.empty() && !index.empty())
 		_serverIndex = index;
@@ -98,7 +98,7 @@ void Server::setIndex(std::string &index)
 		throw std::runtime_error("Error: Server index empty or already set");
 }
 
-void Server::setIp(std::string &ip)
+void Server::setIp(const std::string &ip)
 {
 	if (_ip.empty() && !ip.empty())
 		_ip = ip;
@@ -127,7 +127,7 @@ void Server::setFd(int fd)
 	_fd = fd;
 }
 
-void Server::serverDirective(std::string &key, std::string &value)
+void Server::serverDirective(const std::string &key, const std::string &value)
 {
 	std::string serverSet[6] = {"server_name", "root", "index", "host", "port", "client_max_body_size"};
 	if (key == serverSet[0])
@@ -146,47 +146,47 @@ void Server::serverDirective(std::string &key, std::string &value)
 		throw std::runtime_error("Error: Invalid server directive");
 }
 
-std::string& Server::getServerName()
+const std::string& Server::getServerName() const
 {
 	return _serverName;
 }
 
-std::string& Server::getServerRoot()
+const std::string& Server::getServerRoot() const
 {
 	return _serverRoot;
 }
 
-std::string& Server::getServerIndex()
+const std::string& Server::getServerIndex() const
 {
 	return _serverIndex;
 }
 
-std::string& Server::getIp()
+const std::string& Server::getIp() const
 {
 	return _ip;
 }
 
-int Server::getPort()
+int Server::getPort() const
 {
 	return _port;
 }
 
-int Server::getClientMaxBodySize()
+int Server::getClientMaxBodySize() const
 {
 	return _clientMaxBodySize;
 }
 
-std::vector<Location>& Server::getLocations()
+const std::vector<Location>& Server::getLocations() const
 {
 	return _locations;
 }
 
-std::map<int, std::string>& Server::getErrorPages()
+const std::map<int, std::string>& Server::getErrorPages() const
 {
 	return _errorPages;
 }
 
-std::string& Server::getErrorPath(int code)
+const std::string& Server::getErrorPath(int code)
 {
 	if (_errorPages.find(code) != _errorPages.end())
 		return _errorPages[code];
@@ -198,16 +198,16 @@ Location* Server::getCurrentLocation()
 	return _currentLocation;
 }
 
-int Server::getFd()
+int Server::getFd() const
 {
 	return _fd;
 }
 
-void Server::printServerInfo(std::vector<Server> &server)
+void Server::printServerInfo(const std::vector<Server> &server)
 {
 	int totalWidth = 80;
 	std::cout << "\033[32m" "┌" "\033[1m" "SERVER" << (server.size() == 1 ? "─" : "S") << " INFO" "\033[0m" "\033[32m" "──────────────────────────────────────────────────────────────┐" "\033[0m" "\n";
-	for (std::vector<Server>::iterator it = server.begin(); it != server.end(); it++)
+	for (std::vector<Server>::const_iterator it = server.begin(); it != server.end(); it++)
 	{
 		std::string serverInfo = " Server " "\033[1m" + it->getServerName() +  "\033[0m" " is running on " "\033[1m" + it->getIp() + "\033[0m" " and listening on port " "\033[1m" + std::to_string(it->getPort()) + "\033[0m";
 		std::cout << "\033[32m" "│" "\033[0m" << std::left << std::setw(totalWidth + 18) << serverInfo << "\033[32m" "│" "\033[0m" "\n";

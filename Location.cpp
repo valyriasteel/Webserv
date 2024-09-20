@@ -13,7 +13,7 @@ Location::~Location()
 	
 }
 
-void Location::setPath(std::string &p)
+void Location::setPath(const std::string &p)
 {
 	if (_path.empty() && !p.empty())
 		_path = p;
@@ -21,7 +21,7 @@ void Location::setPath(std::string &p)
 		throw std::runtime_error("Error: Location path empty or already set");
 }
 
-void Location::setIndex(std::string &idx)
+void Location::setIndex(const std::string &idx)
 {
 	if (_index.empty() && !idx.empty())
 		_index = idx;
@@ -29,7 +29,7 @@ void Location::setIndex(std::string &idx)
 		throw std::runtime_error("Error: Location index empty or already set");
 }
 
-void Location::setAllowMethods(std::string &methods)
+void Location::setAllowMethods(const std::string &methods)
 {
 	if (_allowMethods.empty() && !methods.empty())
 	{
@@ -45,7 +45,7 @@ void Location::setAllowMethods(std::string &methods)
 		throw std::runtime_error("Error: Location allow_methods empty or already set");
 }
 
-bool Location::validateMethod(std::string &method)
+bool Location::validateMethod(const std::string &method)
 {
 	std::string validMethods[3] = {"GET", "POST", "DELETE"};
 	for (int i = 0; i < 3; i++)
@@ -64,29 +64,29 @@ void Location::setAutoindex(bool value)
 		throw std::runtime_error("Error: Location autoindex already set");
 }
 
-std::string& Location::getPath()
+const std::string& Location::getPath() const
 {
 	return _path;
 }
 
-std::string& Location::getIndex()
+const std::string& Location::getIndex() const
 {
 	return _index;
 }
 
-std::vector<std::string>& Location::getAllowMethods()
+const std::vector<std::string>& Location::getAllowMethods() const
 {
 	return _allowMethods;
 }
 
-bool& Location::getAutoindex()
+const bool& Location::getAutoindex() const
 {
 	return _autoindex;
 }
 
-bool Location::checkMethod(std::string &method)
+bool Location::checkMethod(const std::string &method) const
 {
-	for (std::vector<std::string>::iterator it = _allowMethods.begin(); it != _allowMethods.end(); it++)
+	for (std::vector<std::string>::const_iterator it = _allowMethods.begin(); it != _allowMethods.end(); it++)
 	{
 		if (*it == method)
 			return true;

@@ -14,16 +14,16 @@ class Location
 	public:
 		Location();
 		~Location();
-		void setPath(std::string &);
-		void setIndex(std::string &);
-		void setAllowMethods(std::string &);
+		void setPath(const std::string &);
+		void setIndex(const std::string &);
+		void setAllowMethods(const std::string &);
 		void setAutoindex(bool);
-		bool validateMethod(std::string &);
-		bool &getAutoindex();
-		bool checkMethod(std::string &);
-		std::string &getPath();
-		std::string &getIndex();
-		std::vector<std::string> &getAllowMethods();
+		bool validateMethod(const std::string &);
+		const bool &getAutoindex() const;
+		bool checkMethod(const std::string &) const;
+		const std::string &getPath() const;	
+		const std::string &getIndex() const;
+		const std::vector<std::string> &getAllowMethods() const;
 };
 
 #endif

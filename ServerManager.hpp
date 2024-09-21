@@ -1,23 +1,20 @@
 #ifndef SERVER_MANAGER_HPP
 # define SERVER_MANAGER_HPP
 
-# include <netinet/in.h>
 # include "Server.hpp"
 
 class ServerManager
 {
 	private:
-		struct sockaddr_in _server_addr;
-		int _socket_fd;
 		int _max_fd;
 		int _client_socket;
-		socklen_t _addr_len;
 		fd_set _read_fd;
 		fd_set _write_fd;
 		fd_set _master_fd;
 		std::vector<Server> _servers;
+		Server *_current_server;
 	public:
-		ServerManager(std::vector<Server> &);
+		ServerManager(const std::vector<Server> &);
 		~ServerManager();
 		void initializeSockets();
     	void run();

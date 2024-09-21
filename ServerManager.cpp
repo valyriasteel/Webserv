@@ -7,16 +7,15 @@
 #include <sys/dir.h>
 #include <sys/stat.h>
 
-ServerManager::ServerManager(std::vector<Server> &servers)
+ServerManager::ServerManager(const std::vector<Server> &servers)
 {
 	_servers = servers;
-	_socket_fd = -1;
 	_max_fd = -1;
 	_client_socket = -1;
 	FD_ZERO(&_master_fd);
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
-	_addr_len = 0;
+	_current_server = NULL;
 }
 
 ServerManager::~ServerManager()
@@ -29,39 +28,40 @@ void ServerManager::initializeSockets()
 {
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
-		_socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (_socket_fd == -1)
+		it->setFd(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
+		if (it->getFd() == -1)
 			throw std::runtime_error("Error: Failed to create socket");
 		int opt = 1;
-		if (setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+		if (setsockopt(it->getFd(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
 		{
-			close(_socket_fd);
+			close(it->getFd());
 			throw std::runtime_error("Error: Failed to set socket options");
 		}
-		std::memset(&_server_addr, 0, sizeof(_server_addr));
-		_server_addr.sin_family = AF_INET;
-		_server_addr.sin_port = htons(it->getPort());
-		_server_addr.sin_addr.s_addr = inet_addr(it->getIp().c_str());
-		if (fcntl(_socket_fd, F_SETFL, O_NONBLOCK) == -1)
+		if (fcntl(it->getFd(), F_SETFL, O_NONBLOCK) == -1)
 		{
-			close(_socket_fd);
+			close(it->getFd());
 			throw std::runtime_error("Error: Failed to set non-blocking mode");
 		}
-		_addr_len = sizeof(_server_addr);
-		if (bind(_socket_fd, (struct sockaddr *)&_server_addr, _addr_len) == -1)
+		struct sockaddr_in server_addr;
+		socklen_t addr_len = 0;
+		std::memset(&server_addr, 0, sizeof(server_addr));
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_port = htons(it->getPort());
+		server_addr.sin_addr.s_addr = inet_addr(it->getIp().c_str());
+		addr_len = sizeof(server_addr);
+		if (bind(it->getFd(), (struct sockaddr *)&server_addr, addr_len) == -1)
 		{
-			close(_socket_fd);
+			close(it->getFd());
 			throw std::runtime_error("Error: Failed to bind socket");
 		}
-		if (listen(_socket_fd, SOMAXCONN) == -1)
+		if (listen(it->getFd(), SOMAXCONN) == -1)
 		{
-			close(_socket_fd);
+			close(it->getFd());
 			throw std::runtime_error("Error: Failed to listen on socket");
 		}
-		it->setFd(_socket_fd);
-		FD_SET(_socket_fd, &_master_fd);
-		if (_socket_fd > _max_fd)
-			_max_fd = _socket_fd;
+		FD_SET(it->getFd(), &_master_fd);
+		if (it->getFd() > _max_fd)
+			_max_fd = it->getFd();
 	}
 }
 
@@ -73,14 +73,23 @@ void ServerManager::run()
 		_write_fd = _master_fd;
 		int activity = select(_max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);
 		if (activity == -1 || activity > FD_SETSIZE)
-			throw std::runtime_error("Error: Failed to select");
-		for (size_t i = 0; i < _servers.size(); i++)
 		{
-			if (FD_ISSET(_servers[i].getFd(), &_read_fd))
-				acceptNewConnection(_servers[i].getFd());
+			for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+				close(it->getFd());
+			throw std::runtime_error("Error: Failed to select");
+		}
+		for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+		{
+			if (FD_ISSET(it->getFd(), &_read_fd))
+			{
+				_current_server = &(*it);
+				break;
+			}
 		}
 		for (int i = 3; i <= _max_fd; i++)
 		{
+			if (FD_ISSET(i, &_read_fd) && isServerSocket(i))
+				acceptNewConnection(i);
 			if (FD_ISSET(i, &_read_fd) && !isServerSocket(i))
 				handleClientRequest(i);
 			if (FD_ISSET(i, &_write_fd) && !isServerSocket(i))
@@ -91,7 +100,7 @@ void ServerManager::run()
 
 void ServerManager::acceptNewConnection(int server_socket)
 {
-	_client_socket = accept(server_socket, (struct sockaddr *)&_server_addr, &_addr_len);
+	_client_socket = accept(server_socket, NULL, NULL);
 	if (_client_socket == -1)
 		throw std::runtime_error("Error: Failed to accept connection");
 	if (fcntl(_client_socket, F_SETFL, O_NONBLOCK) == -1)
@@ -156,11 +165,8 @@ void ServerManager::handleClientWrite(int client_socket)
 
 bool ServerManager::isServerSocket(int socket)
 {
-	for (size_t i = 0; i < _servers.size(); i++)
-	{
-		if (_servers[i].getFd() == socket)
-			return true;
-	}
+	if (_current_server->getFd() == socket)
+		return true;
 	return false;
 }
 
@@ -268,7 +274,7 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 
 std::string ServerManager::findFilePath(const std::string &uri)
 {
-    std::string root = "www";
+    std::string root = _current_server->getServerRoot();
     return root + uri;
 }
 

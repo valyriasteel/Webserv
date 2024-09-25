@@ -7,6 +7,8 @@
 #include <sys/dir.h>
 #include <sys/stat.h>
 
+std::map<int, int> client_to_server_map;
+
 ServerManager::ServerManager(std::vector<Server> &servers)
 {
 	_servers = servers;
@@ -71,21 +73,17 @@ void ServerManager::run()
 			clearClientConnections();
 			throw std::runtime_error("Error: Failed to select");
 		}
-		for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
-		{
-			if (FD_ISSET(it->getFd(), &_read_fd))
-			{
-				_current_server = &(*it);
-				break;
-			}
-		}
+
 		for (int i = 3; i <= _max_fd; i++)
 		{
-			if (FD_ISSET(i, &_read_fd) && isServerSocket(i))
-				acceptNewConnection(i);
-			if (FD_ISSET(i, &_read_fd) && !isServerSocket(i))
-				handleClientRequest(i);
-			if (FD_ISSET(i, &_write_fd) && !isServerSocket(i))
+			if(FD_ISSET(i, &_read_fd))
+			{
+				if(isServerSocket(i))
+					acceptNewConnection(i);
+				else
+					handleClientRequest(i);
+			}
+			if (FD_ISSET(i, &_write_fd))
 				handleClientWrite(i);
 		}
 	}
@@ -104,10 +102,23 @@ void ServerManager::acceptNewConnection(int server_socket)
 	FD_SET(_client_socket, &_master_fd);
 	if (_client_socket > _max_fd)
 		_max_fd = _client_socket;
+	client_to_server_map[_client_socket] = server_socket;
 }
 
 void ServerManager::handleClientRequest(int client_socket)
 {
+	// İstemcinin bağlı olduğu sunucu soketini buluyoruz
+	int server_socket = client_to_server_map[client_socket];
+
+	// Doğru sunucuyu seçiyoruz
+	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+	{
+		if (it->getFd() == server_socket)
+		{
+			_current_server = &(*it);  // Doğru sunucuya ayarlıyoruz
+			break;
+		}
+	}
 	char buffer[1024];
 	std::memset(buffer, 0, sizeof(buffer));
 
@@ -118,6 +129,7 @@ void ServerManager::handleClientRequest(int client_socket)
 			std::cout << "Error: Failed to read from socket" << std::endl;
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
+		client_to_server_map.erase(client_socket);
 		return;
 	}
 	std::string request(buffer, bytes_received);
@@ -190,10 +202,21 @@ void ServerManager::handleGetRequest(int client_socket, std::string &uri)
 
 	if (isDirectory(file_path))
 	{
-		if (isAutoIndexEnabled(file_path))
-			sendAutoIndex(client_socket, file_path);
+		std::string index_file = file_path + "/" + _current_server->getServerIndex();
+		std::ifstream file(index_file.c_str());
+		if (!file.is_open())
+		{
+			if (isAutoIndexEnabled(uri))
+				sendAutoIndex(client_socket, uri);
+			else
+				sendResponse(client_socket, 403, "Forbidden", index_file); //
+		}
 		else
-			sendResponse(client_socket, 403, "Forbidden", file_path);
+		{
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			sendResponse(client_socket, 200, buffer.str(), index_file); //
+		}
 	}
 	else
 	{
@@ -268,7 +291,8 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 	else
 		status_message = "Unknown";
 
-	std::string content_type = getContentType(file_path);
+		std::string content_type = (status_code == 200 && file_path.find("error_pages") != std::string::npos) 
+                               ? "text/html" : getContentType(file_path);
 
 	std::string response = "HTTP/1.1 " + intToString(status_code) + " " + status_message + "\r\n";
     response += "Content-Length: " + intToString(content.size()) + "\r\n";
@@ -310,11 +334,12 @@ std::string ServerManager::findFilePath(const std::string &uri)
 
 void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 {
-	std::string response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-	response += "<html><head><title>Index of " + uri + "</title></head><body>";
+	std::string response = "<html><head><title>Index of " + uri + "</title></head><body>";
 	response += "<h1>Index of " + uri + "</h1>";
 	response += "<ul>";
-	DIR *dir = opendir(uri.c_str());
+	
+	std::string dir_path = findFilePath(uri);
+	DIR *dir = opendir(dir_path.c_str());
 	if (dir == NULL)
 	{
 		sendResponse(client_socket, 404, "Not Found", uri);
@@ -323,7 +348,9 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL)
 	{
-		response += "<li><a href=\"" + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
+		if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
+			continue;
+		response += "<li><a href=\"" + uri + "/" + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
 	}
 	response += "</ul></body></html>";
 	sendResponse(client_socket, 200, response, uri);
@@ -339,9 +366,16 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-	std::string index_file = path + "index.html";
-	std::ifstream file(index_file.c_str());
-	return file.is_open();
+    const std::vector<Location> &locations = _current_server->getLocations();   
+    for (size_t i = 0; i < locations.size(); ++i)
+    {
+        const Location &loc = locations[i];      
+        if (loc.getPath() == path || 
+            (path.find(loc.getPath()) == 0 && 
+             (path.length() == loc.getPath().length() || path[loc.getPath().length()] == '/')))
+            return loc.getAutoindex();
+    }
+    return false;
 }
 
 void ServerManager::clearClientConnections()

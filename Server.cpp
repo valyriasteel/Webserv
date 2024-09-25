@@ -13,11 +13,6 @@ Server::Server()
 	_currentLocation = NULL;
 }
 
-Server::~Server()
-{
-	_locations.clear();
-}
-
 bool Server::operator==(const Server &server) const
 {
 	bool name = _serverName == server._serverName;
@@ -44,17 +39,21 @@ int Server::stringToInt(const std::string &str)
     return num;
 }
 
-void Server::setErrorPage(const std::string &code, const std::string &path)
+void Server::setErrorPage(const std::string &code, const std::string &path, bool inServer)
 {
+	if (!inServer)
+		throw std::runtime_error("Error: No assignment can be made without a server directive");
 	int code_int = stringToInt(code);
 	if (code_int >= 100 && code_int < 600 && _errorPages.find(code_int) == _errorPages.end())
 		_errorPages[code_int] = path;
 	else
-		throw std::runtime_error("Error: Invalid error code or error code already set");
+		throw std::runtime_error("Error: Invalid error code or duplicate error code");
 }
 
-void Server::locationDirective(const std::string &key, const std::string &value)
+void Server::locationDirective(const std::string &key, const std::string &value, bool inServer)
 {
+	if (!inServer)
+		throw std::runtime_error("Error: No assignment can be made without a server directive");
 	std::string locationSet[4] = {"path", "allow_methods", "index", "autoindex"};
 	if (key == locationSet[0])
 		_currentLocation->setPath(value);
@@ -79,7 +78,7 @@ void Server::setName(const std::string &name)
 	if (_serverName.empty() && !name.empty())
 		_serverName = name;
 	else
-		throw std::runtime_error("Error: Server name empty or already set");
+		throw std::runtime_error("Error: Server name already set");
 }
 
 void Server::setRoot(const std::string &root)
@@ -87,7 +86,7 @@ void Server::setRoot(const std::string &root)
 	if (_serverRoot.empty() && !root.empty())
 		_serverRoot = root;
 	else
-		throw std::runtime_error("Error: Server root empty or already set");
+		throw std::runtime_error("Error: Server root already set");
 }
 
 void Server::setIndex(const std::string &index)
@@ -95,7 +94,7 @@ void Server::setIndex(const std::string &index)
 	if (_serverIndex.empty() && !index.empty())
 		_serverIndex = index;
 	else
-		throw std::runtime_error("Error: Server index empty or already set");
+		throw std::runtime_error("Error: Server index already set");
 }
 
 void Server::setIp(const std::string &ip)
@@ -103,7 +102,7 @@ void Server::setIp(const std::string &ip)
 	if (_ip.empty() && !ip.empty())
 		_ip = ip;
 	else
-		throw std::runtime_error("Error: Server ip empty or already set");
+		throw std::runtime_error("Error: Server ip already set");
 }
 
 void Server::setPort(int port)
@@ -111,7 +110,7 @@ void Server::setPort(int port)
 	if (port > 0 && port < 65535 && _port == -1)
 		_port = port;
 	else
-		throw std::runtime_error("Error: Server port empty or already set");
+		throw std::runtime_error("Error: Server port invalid");
 }
 
 void Server::setClientMaxBodySize(int size)
@@ -119,7 +118,7 @@ void Server::setClientMaxBodySize(int size)
 	if (_clientMaxBodySize == -1 && size >= 0)
 		_clientMaxBodySize = size;
 	else
-		throw std::runtime_error("Error: Server client_max_body_size empty or already set");
+		throw std::runtime_error("Error: Server client_max_body_size invalid");
 }
 
 void Server::setFd(int fd)
@@ -127,8 +126,10 @@ void Server::setFd(int fd)
 	_fd = fd;
 }
 
-void Server::serverDirective(const std::string &key, const std::string &value)
+void Server::serverDirective(const std::string &key, const std::string &value, bool inServer)
 {
+	if (!inServer)
+		throw std::runtime_error("Error: No assignment can be made without a server directive");
 	std::string serverSet[6] = {"server_name", "root", "index", "host", "port", "client_max_body_size"};
 	if (key == serverSet[0])
 		setName(value);

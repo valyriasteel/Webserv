@@ -14,24 +14,27 @@ class ServerManager
 		std::vector<Server> _servers;
 		Server *_current_server;
 	public:
-		ServerManager(const std::vector<Server> &);
-		~ServerManager();
+		ServerManager(std::vector<Server> &);
 		void initializeSockets();
     	void run();
-    	void acceptNewConnection(int server_socket);
-    	void handleClientRequest(int client_socket);
-		void handleClientWrite(int client_socket);
-		bool isServerSocket(int socket);
-		std::string parseMethod(std::string &request);
-		std::string parseUri(std::string &request);
-		void handleGetRequest(int client_socket, std::string &uri);
-		void handlePostRequest(int client_socket, std::string &uri, std::string &request);
-		void handleDeleteRequest(int client_socket, std::string &uri);
-		void sendResponse(int client_socket, int status_code, const std::string &content);
-		std::string findFilePath(const std::string &uri);
-		void sendAutoIndex(int client_socket, const std::string &uri);
-		bool isDirectory(const std::string &path);
-		bool isAutoIndexEnabled(const std::string &path);
+    	void acceptNewConnection(int);
+    	void handleClientRequest(int);
+		void handleClientWrite(int);
+		void clearClientConnections();
+		bool isServerSocket(int);
+		std::string parseMethod(std::string &);
+		std::string parseUri(std::string &);
+		std::string getContentType(const std::string &);
+		std::string findFilePath(const std::string &);
+		std::string intToString(int);
+		void handleGetRequest(int, std::string &);
+		void handlePostRequest(int, std::string &, std::string &);
+		void handleDeleteRequest(int, std::string &);
+		void sendResponse(int, int, const std::string &, const std::string &);
+		void sendAutoIndex(int, const std::string &);
+		bool isDirectory(const std::string &);
+		bool isAutoIndexEnabled(const std::string &);
+
 };
 
 #endif

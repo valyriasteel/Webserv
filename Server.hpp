@@ -19,17 +19,16 @@ class Server
 		Location *_currentLocation;
 	public:
 		Server();
-		~Server();
 		void setFd(int);
-		void setErrorPage(const std::string &, const std::string &);
+		void setErrorPage(const std::string &, const std::string &, bool);
 		void setName(const std::string &);
 		void setRoot(const std::string &);
 		void setIndex(const std::string &);
 		void setIp(const std::string &);
 		void setPort(int);
 		void setClientMaxBodySize(int);
-		void locationDirective(const std::string &, const std::string &);
-		void serverDirective(const std::string &, const std::string &);
+		void locationDirective(const std::string &, const std::string &, bool);
+		void serverDirective(const std::string &, const std::string &, bool);
 		void addLocation();
 		static void printServerInfo(const std::vector<Server> &);
 		bool isServerValid() const;

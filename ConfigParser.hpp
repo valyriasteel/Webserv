@@ -13,7 +13,6 @@ class ConfigParser
 		Server *_currentServer;
 	public:
 		ConfigParser();
-		~ConfigParser();
 		void validateServers();
 		void handleDirective(std::string &);
 		bool isLocation();

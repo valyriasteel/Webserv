@@ -3,15 +3,10 @@
 
 ConfigParser::ConfigParser()
 {
-   _inServer = false;
+    _inServer = false;
     _inLocation = false;
     _inError = false;
     _currentServer = NULL;
-}
-
-ConfigParser::~ConfigParser()
-{
-    _servers.clear();
 }
 
 void ConfigParser::checkArgument(const std::string &configFile) const
@@ -58,6 +53,8 @@ std::vector<Server> ConfigParser::configFileParser(const std::string &configFile
                 continue;
         handleDirective(line);
     }
+    if (_servers.empty())
+        throw std::runtime_error("Error: No server blocks found in the config file");
     validateServers();
     file.close();
     return _servers;
@@ -101,17 +98,19 @@ void ConfigParser::handleDirective(std::string &line)
     size_t pos;
 
     line = line.substr(0, line.find('#'));
+    if (line[line.length() - 1] == ':')
+        throw std::runtime_error("Error: Missing key in directive");
     pos = line.find(':');
     if (pos == std::string::npos)
-        throw std::runtime_error("Error: missing ':' in directive");
+        throw std::runtime_error("Error: Missing ':' in directive");
     key = line.substr(0, pos);
     value = line.substr(pos + 1);
     if (_inError)
-        _currentServer->setErrorPage(key, value);
+        _currentServer->setErrorPage(key, value, _inServer);
     else if (_inLocation)
-        _currentServer->locationDirective(key, value);
+        _currentServer->locationDirective(key, value, _inServer);
     else
-        _currentServer->serverDirective(key, value);
+        _currentServer->serverDirective(key, value, _inServer);
 }
 
 void ConfigParser::validateServers()

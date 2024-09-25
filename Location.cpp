@@ -8,17 +8,12 @@ Location::Location()
 	_autoindex = false;
 }
 
-Location::~Location()
-{
-	
-}
-
 void Location::setPath(const std::string &p)
 {
 	if (_path.empty() && !p.empty())
 		_path = p;
 	else
-		throw std::runtime_error("Error: Location path empty or already set");
+		throw std::runtime_error("Error: Location path already set");
 }
 
 void Location::setIndex(const std::string &idx)
@@ -26,7 +21,7 @@ void Location::setIndex(const std::string &idx)
 	if (_index.empty() && !idx.empty())
 		_index = idx;
 	else
-		throw std::runtime_error("Error: Location index empty or already set");
+		throw std::runtime_error("Error: Location index already set");
 }
 
 void Location::setAllowMethods(const std::string &methods)
@@ -42,12 +37,12 @@ void Location::setAllowMethods(const std::string &methods)
 		}
 	}
 	else
-		throw std::runtime_error("Error: Location allow_methods empty or already set");
+		throw std::runtime_error("Error: Location allow_methods already set");
 }
 
 bool Location::validateMethod(const std::string &method)
 {
-	std::string validMethods[3] = {"GET", "POST", "DELETE"};
+	static const std::string validMethods[3] = {"GET", "POST", "DELETE"};
 	for (int i = 0; i < 3; i++)
 	{
 		if (method == validMethods[i])

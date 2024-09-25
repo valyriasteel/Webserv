@@ -7,7 +7,7 @@
 #include <sys/dir.h>
 #include <sys/stat.h>
 
-ServerManager::ServerManager(const std::vector<Server> &servers)
+ServerManager::ServerManager(std::vector<Server> &servers)
 {
 	_servers = servers;
 	_max_fd = -1;
@@ -16,12 +16,6 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
 	_current_server = NULL;
-}
-
-ServerManager::~ServerManager()
-{
-	for (size_t i = 0; i < _servers.size(); i++)
-		close(_servers[i].getFd());
 }
 
 void ServerManager::initializeSockets()
@@ -37,7 +31,7 @@ void ServerManager::initializeSockets()
 			close(it->getFd());
 			throw std::runtime_error("Error: Failed to set socket options");
 		}
-		if (fcntl(it->getFd(), F_SETFL, O_NONBLOCK) == -1)
+		if (fcntl(it->getFd(), F_SETFL, O_NONBLOCK, FD_CLOEXEC) == -1)
 		{
 			close(it->getFd());
 			throw std::runtime_error("Error: Failed to set non-blocking mode");
@@ -70,12 +64,11 @@ void ServerManager::run()
 	while (true)
 	{
 		_read_fd = _master_fd;
-		_write_fd = _master_fd;
+		FD_ZERO(&_write_fd);
 		int activity = select(_max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);
 		if (activity == -1 || activity > FD_SETSIZE)
 		{
-			for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
-				close(it->getFd());
+			clearClientConnections();
 			throw std::runtime_error("Error: Failed to select");
 		}
 		for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
@@ -103,7 +96,7 @@ void ServerManager::acceptNewConnection(int server_socket)
 	_client_socket = accept(server_socket, NULL, NULL);
 	if (_client_socket == -1)
 		throw std::runtime_error("Error: Failed to accept connection");
-	if (fcntl(_client_socket, F_SETFL, O_NONBLOCK) == -1)
+	if (fcntl(_client_socket, F_SETFL, O_NONBLOCK, FD_CLOEXEC) == -1)
 	{
 		close(_client_socket);
 		throw std::runtime_error("Error: Failed to set non-blocking mode");
@@ -123,8 +116,6 @@ void ServerManager::handleClientRequest(int client_socket)
 	{
 		if (bytes_received == -1)
 			std::cout << "Error: Failed to read from socket" << std::endl;
-		else
-			std::cout << "Error: Client disconnected" << std::endl;
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		return;
@@ -139,6 +130,9 @@ void ServerManager::handleClientRequest(int client_socket)
 		FD_CLR(client_socket, &_master_fd);
 		return;
 	}
+
+	std::string file_path = findFilePath(uri);
+
 	if (method == "GET")
 		handleGetRequest(client_socket, uri);
 	else if (method == "POST")
@@ -146,7 +140,7 @@ void ServerManager::handleClientRequest(int client_socket)
 	else if (method == "DELETE")
 		handleDeleteRequest(client_socket, uri);
 	else
-		sendResponse(client_socket, 405, "Method Not Allowed");
+		sendResponse(client_socket, 405, "Method Not Allowed", file_path);
 }
 
 void ServerManager::handleClientWrite(int client_socket)
@@ -165,8 +159,9 @@ void ServerManager::handleClientWrite(int client_socket)
 
 bool ServerManager::isServerSocket(int socket)
 {
-	if (_current_server->getFd() == socket)
-		return true;
+	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+		if (it->getFd() == socket)
+			return true;
 	return false;
 }
 
@@ -198,19 +193,29 @@ void ServerManager::handleGetRequest(int client_socket, std::string &uri)
 		if (isAutoIndexEnabled(file_path))
 			sendAutoIndex(client_socket, file_path);
 		else
-			sendResponse(client_socket, 403, "Forbidden");
+			sendResponse(client_socket, 403, "Forbidden", file_path);
 	}
 	else
 	{
 		std::ifstream file(file_path.c_str());
 		if (!file.is_open())
 		{
-			sendResponse(client_socket, 404, "Not Found");
+			std::string error_file = _current_server->getErrorPages().find(404)->second;
+			error_file = _current_server->getServerRoot() + error_file;
+			std::ifstream file(error_file.c_str());
+			if (file.is_open())
+			{
+				std::stringstream buffer;
+				buffer << file.rdbuf();
+				sendResponse(client_socket, 404, buffer.str(), error_file);
+			}
+			else
+				sendResponse(client_socket, 404, "Not Found", file_path);
 			return;
 		}
 		std::stringstream buffer;
 		buffer << file.rdbuf();
-		sendResponse(client_socket, 200, buffer.str());
+		sendResponse(client_socket, 200, buffer.str(), file_path);
 	}
 }
 
@@ -219,7 +224,7 @@ void ServerManager::handlePostRequest(int client_socket, std::string &uri, std::
 	size_t pos = request.find("\r\n\r\n");
 	if (pos == std::string::npos)
 	{
-		sendResponse(client_socket, 400, "Bad Request");
+		sendResponse(client_socket, 400, "Bad Request", uri);
 		return;
 	}
 	std::string content = request.substr(pos + 4);
@@ -227,24 +232,24 @@ void ServerManager::handlePostRequest(int client_socket, std::string &uri, std::
 	std::ofstream file(upload_dir.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
-		sendResponse(client_socket, 500, "Internal Server Error");
+		sendResponse(client_socket, 500, "Internal Server Error", upload_dir);
 		return;
 	}
 	file << content;
 	file.close();
-	sendResponse(client_socket, 200, "File uploaded successfully");
+	sendResponse(client_socket, 200, "File uploaded successfully", upload_dir);
 }
 
 void ServerManager::handleDeleteRequest(int client_socket, std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
 	if (remove(file_path.c_str()) == 0)
-		sendResponse(client_socket, 200, "File deleted successfully");
+		sendResponse(client_socket, 200, "File deleted successfully", file_path);
 	else
-		sendResponse(client_socket, 404, "Not Found");
+		sendResponse(client_socket, 404, "Not Found", file_path);
 }
 
-void ServerManager::sendResponse(int client_socket, int status_code, const std::string &content)
+void ServerManager::sendResponse(int client_socket, int status_code, const std::string &content, const std::string &file_path)
 {
 	std::string status_message;
 
@@ -262,19 +267,44 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 		status_message = "Internal Server Error";
 	else
 		status_message = "Unknown";
-	
-	std::string response = "HTTP/1.1 " + std::to_string(status_code) + " " + status_message + "\r\n";
-    response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
-    response += "Content-Type: text/html\r\n";
+
+	std::string content_type = getContentType(file_path);
+
+	std::string response = "HTTP/1.1 " + intToString(status_code) + " " + status_message + "\r\n";
+    response += "Content-Length: " + intToString(content.size()) + "\r\n";
+    response += "Content-Type: " + content_type + "\r\n";
     response += "\r\n";
     response += content;
 
-	write(client_socket, response.c_str(), response.size());
+	ssize_t total_sent = 0;
+	ssize_t response_size = response.size();
+
+	while (total_sent < response_size)
+	{
+		ssize_t bytes_sent = write(client_socket, response.c_str() + total_sent, response_size - total_sent);
+		if (bytes_sent == -1)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				FD_SET(client_socket, &_write_fd);
+				continue;
+			}
+			else
+			{
+				close(client_socket);
+				FD_CLR(client_socket, &_master_fd);
+				return;
+			}
+		}
+		total_sent += bytes_sent;
+	}
 }
 
 std::string ServerManager::findFilePath(const std::string &uri)
 {
     std::string root = _current_server->getServerRoot();
+	if (uri.empty() || uri == "/")
+		return root + "/index.html";
     return root + uri;
 }
 
@@ -287,7 +317,7 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 	DIR *dir = opendir(uri.c_str());
 	if (dir == NULL)
 	{
-		sendResponse(client_socket, 404, "Not Found");
+		sendResponse(client_socket, 404, "Not Found", uri);
 		return;
 	}
 	struct dirent *entry;
@@ -296,7 +326,7 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 		response += "<li><a href=\"" + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
 	}
 	response += "</ul></body></html>";
-	sendResponse(client_socket, 200, response);
+	sendResponse(client_socket, 200, response, uri);
 }
 
 bool ServerManager::isDirectory(const std::string &path)
@@ -309,7 +339,48 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-	std::string index_file = path + "/index.html";
+	std::string index_file = path + "index.html";
 	std::ifstream file(index_file.c_str());
 	return file.is_open();
+}
+
+void ServerManager::clearClientConnections()
+{
+    for (int i = 3; i <= _max_fd; i++)
+    {
+        if (FD_ISSET(i, &_read_fd))
+        {
+            if (_current_server == NULL || i != _current_server->getFd())
+            {
+                FD_CLR(i, &_master_fd);
+                FD_CLR(i, &_read_fd);
+                close(i);
+            }
+        }
+        if (FD_ISSET(i, &_write_fd))
+            if (_current_server == NULL || i != _current_server->getFd())
+                FD_CLR(i, &_write_fd);
+    }
+}
+
+std::string ServerManager::getContentType(const std::string &file_path)
+{
+    if (file_path.find(".html") != std::string::npos)
+        return "text/html";
+    else if (file_path.find(".png") != std::string::npos)
+        return "image/png";
+    else if (file_path.find(".jpg") != std::string::npos || file_path.find(".jpeg") != std::string::npos)
+        return "image/jpeg";
+    else if (file_path.find(".gif") != std::string::npos)
+        return "image/gif";
+    else if (file_path.find(".ico") != std::string::npos)
+        return "image/x-icon";
+    return "application/octet-stream";
+}
+
+std::string ServerManager::intToString(int number)
+{
+    std::stringstream ss;
+    ss << number;
+    return ss.str();
 }

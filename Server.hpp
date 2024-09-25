@@ -37,6 +37,7 @@ class Server
 		int getPort() const;
 		int getClientMaxBodySize() const;
 		int getFd() const;
+		static const std::string intToString(int);
 		const std::string &getServerName() const;
 		const std::string &getServerRoot() const;
 		const std::string &getServerIndex() const;

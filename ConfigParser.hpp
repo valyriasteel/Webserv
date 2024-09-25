@@ -15,10 +15,10 @@ class ConfigParser
 		ConfigParser();
 		void validateServers();
 		void handleDirective(std::string &);
+		void checkArgument(const std::string &) const;
 		bool isLocation();
 		bool isErrorPage();
 		bool serverBlockStart();
-		void checkArgument(const std::string &) const;
 		std::vector<Server> configFileParser(const std::string &);
 };
 

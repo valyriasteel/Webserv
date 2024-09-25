@@ -40,7 +40,7 @@ void Location::setAllowMethods(const std::string &methods)
 		throw std::runtime_error("Error: Location allow_methods already set");
 }
 
-bool Location::validateMethod(const std::string &method)
+bool Location::validateMethod(const std::string &method) const
 {
 	static const std::string validMethods[3] = {"GET", "POST", "DELETE"};
 	for (int i = 0; i < 3; i++)
@@ -74,7 +74,7 @@ const std::vector<std::string>& Location::getAllowMethods() const
 	return _allowMethods;
 }
 
-const bool& Location::getAutoindex() const
+bool Location::getAutoindex() const
 {
 	return _autoindex;
 }

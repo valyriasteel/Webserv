@@ -35,7 +35,7 @@ int Server::stringToInt(const std::string &str)
     int num;
     ss >> num;
     if (ss.fail())
-        throw std::runtime_error("Error: Invalid number");
+        throw std::runtime_error("Error: Convert string to int failed");
     return num;
 }
 
@@ -208,6 +208,8 @@ const std::string Server::intToString(int number)
 {
     std::stringstream ss;
     ss << number;
+	if (ss.fail())
+		throw std::runtime_error("Error: Convert int to string failed");
     return ss.str();
 }
 

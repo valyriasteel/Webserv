@@ -7,8 +7,6 @@
 #include <sys/dir.h>
 #include <sys/stat.h>
 
-std::map<int, int> client_to_server_map;
-
 ServerManager::ServerManager(std::vector<Server> &servers)
 {
 	_servers = servers;
@@ -59,6 +57,7 @@ void ServerManager::initializeSockets()
 		if (it->getFd() > _max_fd)
 			_max_fd = it->getFd();
 	}
+	initStatusCode();
 }
 
 void ServerManager::run()
@@ -66,11 +65,11 @@ void ServerManager::run()
 	while (true)
 	{
 		_read_fd = _master_fd;
-		FD_ZERO(&_write_fd);
+		//FD_ZERO(&_write_fd);// farklı bir çözüm bul
 		int activity = select(_max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);
-		if (activity == -1 || activity > FD_SETSIZE)
+		if (activity == -1)
 		{
-			clearClientConnections();
+			clearClientConnections();// !!!!sıkıntı!!!!
 			throw std::runtime_error("Error: Failed to select");
 		}
 
@@ -81,10 +80,10 @@ void ServerManager::run()
 				if(isServerSocket(i))
 					acceptNewConnection(i);
 				else
-					handleClientRequest(i);
+					handleClientRead(i);
 			}
 			if (FD_ISSET(i, &_write_fd))
-				handleClientWrite(i);
+				handleClientRequest(i);
 		}
 	}
 }
@@ -102,71 +101,58 @@ void ServerManager::acceptNewConnection(int server_socket)
 	FD_SET(_client_socket, &_master_fd);
 	if (_client_socket > _max_fd)
 		_max_fd = _client_socket;
-	client_to_server_map[_client_socket] = server_socket;
+	_client_to_server_map[_client_socket] = server_socket;// farklı bir çözüm bul
 }
 
-void ServerManager::handleClientRequest(int client_socket)
+void ServerManager::handleClientRead(int client_socket)
 {
-	// İstemcinin bağlı olduğu sunucu soketini buluyoruz
-	int server_socket = client_to_server_map[client_socket];
+	int server_socket = _client_to_server_map[client_socket]; // farklı bir çözüm bul
 
-	// Doğru sunucuyu seçiyoruz
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
 		if (it->getFd() == server_socket)
 		{
-			_current_server = &(*it);  // Doğru sunucuya ayarlıyoruz
+			_current_server = &(*it);// farklı bir çözüm bul
 			break;
 		}
 	}
-	char buffer[1024];
+	char buffer[4096];
 	std::memset(buffer, 0, sizeof(buffer));
 
 	int bytes_received = read(client_socket, buffer, sizeof(buffer));
 	if (bytes_received <= 0)
 	{
 		if (bytes_received == -1)
-			std::cout << "Error: Failed to read from socket" << std::endl;
+			throw std::runtime_error("Error: Failed to read from socket");
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
-		client_to_server_map.erase(client_socket);
+		FD_CLR(client_socket, &_read_fd);
+		FD_CLR(client_socket, &_write_fd);
+		_client_to_server_map.erase(client_socket);// farklı bir çözüm bul
 		return;
 	}
 	std::string request(buffer, bytes_received);
-	std::string method = parseMethod(request);
-	std::string uri = parseUri(request);
-	if (method.empty() || uri.empty())
-	{
-		std::cout << "Error: Invalid request" << std::endl;
-		close(client_socket);
-		FD_CLR(client_socket, &_master_fd);
-		return;
-	}
-
-	std::string file_path = findFilePath(uri);
-
-	if (method == "GET")
-		handleGetRequest(client_socket, uri);
-	else if (method == "POST")
-		handlePostRequest(client_socket, uri, request);
-	else if (method == "DELETE")
-		handleDeleteRequest(client_socket, uri);
-	else
-		sendResponse(client_socket, 405, "Method Not Allowed", file_path);
+	_request = request;
+	FD_SET(client_socket, &_write_fd);
 }
 
-void ServerManager::handleClientWrite(int client_socket)
+void ServerManager::handleClientRequest(int client_socket)
 {
-	std::string response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nHello World!";
-	int bytes_sent = write(client_socket, response.c_str(), response.size());
-	if (bytes_sent == -1)
+	_method = parseMethod(_request);
+	_uri = parseUri(_request);
+	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
-		throw std::runtime_error("Error: Failed to write to socket");
+		throw std::runtime_error("Error: Failed to parse request");
 	}
-	close(client_socket);
-	FD_CLR(client_socket, &_master_fd);
+	if (_method == "GET")
+		handleGetRequest(client_socket, _uri);
+	else if (_method == "POST")
+		handlePostRequest(client_socket, _uri, _request);
+	else if (_method == "DELETE")
+		handleDeleteRequest(client_socket, _uri);
+	FD_CLR(client_socket, &_write_fd);
 }
 
 bool ServerManager::isServerSocket(int socket)
@@ -201,23 +187,7 @@ void ServerManager::handleGetRequest(int client_socket, std::string &uri)
 	std::string file_path = findFilePath(uri);
 
 	if (isDirectory(file_path))
-	{
-		std::string index_file = file_path + "/" + _current_server->getServerIndex();
-		std::ifstream file(index_file.c_str());
-		if (!file.is_open())
-		{
-			if (isAutoIndexEnabled(uri))
-				sendAutoIndex(client_socket, uri);
-			else
-				sendResponse(client_socket, 403, "Forbidden", index_file); //
-		}
-		else
-		{
-			std::stringstream buffer;
-			buffer << file.rdbuf();
-			sendResponse(client_socket, 200, buffer.str(), index_file); //
-		}
-	}
+		directoryListing(client_socket, uri, file_path);
 	else
 	{
 		std::ifstream file(file_path.c_str());
@@ -416,5 +386,39 @@ std::string ServerManager::intToString(int number)
 {
     std::stringstream ss;
     ss << number;
+	if (ss.fail())
+		throw std::runtime_error("Error: Convert int to string failed");
     return ss.str();
+}
+
+void ServerManager::initStatusCode()
+{
+	_status_code.insert(std::make_pair(200, "OK"));
+	_status_code.insert(std::make_pair(400, "Bad Request"));
+	_status_code.insert(std::make_pair(403, "Forbidden"));
+	_status_code.insert(std::make_pair(404, "Not Found"));
+	_status_code.insert(std::make_pair(405, "Method Not Allowed"));
+	_status_code.insert(std::make_pair(413, "Payload Too Large"));
+	_status_code.insert(std::make_pair(500, "Internal Server Error"));
+	_status_code.insert(std::make_pair(501, "Not Implemented"));
+	_status_code.insert(std::make_pair(502, "Bad Gateway"));
+}
+
+void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
+{
+	std::string index_file = file_path + "/" + _current_server->getServerIndex();
+	std::ifstream file(index_file.c_str());
+	if (!file.is_open())
+	{
+		if (isAutoIndexEnabled(uri))
+			sendAutoIndex(client_socket, uri);
+		else
+			sendResponse(client_socket, 403, "Forbidden", index_file); //
+	}
+	else
+	{
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		sendResponse(client_socket, 200, buffer.str(), index_file); //
+	}
 }

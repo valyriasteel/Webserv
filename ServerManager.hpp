@@ -13,15 +13,22 @@ class ServerManager
 		fd_set _master_fd;
 		std::vector<Server> _servers;
 		Server *_current_server;
+		std::map<int, int> _client_to_server_map;
+		std::map<int, std::string> _status_code;
+		std::string _method;
+		std::string _uri;
+		std::string _request;
 	public:
 		ServerManager(std::vector<Server> &);
 		void initializeSockets();
     	void run();
     	void acceptNewConnection(int);
-    	void handleClientRequest(int);
-		void handleClientWrite(int);
+    	void handleClientRead(int);
+		void handleClientRequest(int);
 		void clearClientConnections();
 		bool isServerSocket(int);
+		void initStatusCode();
+		void directoryListing(int, const std::string &, const std::string &);
 		std::string parseMethod(std::string &);
 		std::string parseUri(std::string &);
 		std::string getContentType(const std::string &);
@@ -34,7 +41,6 @@ class ServerManager
 		void sendAutoIndex(int, const std::string &);
 		bool isDirectory(const std::string &);
 		bool isAutoIndexEnabled(const std::string &);
-
 };
 
 #endif

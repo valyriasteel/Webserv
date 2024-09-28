@@ -6,7 +6,6 @@ Server::Server()
 {
 	_serverName = "";
 	_serverRoot = "";
-	_serverIndex = "";
 	_ip = "";
 	_port = -1;
 	_clientMaxBodySize = -1;
@@ -24,7 +23,7 @@ bool Server::operator==(const Server &server) const
 
 bool Server::isServerValid() const
 {
-	if (_serverName.empty() || _port == -1 || _ip.empty() || _serverRoot.empty() || _serverIndex.empty() || _locations.empty() || _clientMaxBodySize == -1 || _errorPages.empty())
+	if (_serverName.empty() || _port == -1 || _ip.empty() || _serverRoot.empty() || _locations.empty() || _clientMaxBodySize == -1 || _errorPages.empty())
 		return false;
 	return true;
 }
@@ -89,14 +88,6 @@ void Server::setRoot(const std::string &root)
 		throw std::runtime_error("Error: Server root already set");
 }
 
-void Server::setIndex(const std::string &index)
-{
-	if (_serverIndex.empty() && !index.empty())
-		_serverIndex = index;
-	else
-		throw std::runtime_error("Error: Server index already set");
-}
-
 void Server::setIp(const std::string &ip)
 {
 	if (_ip.empty() && !ip.empty())
@@ -130,18 +121,16 @@ void Server::serverDirective(const std::string &key, const std::string &value, b
 {
 	if (!inServer)
 		throw std::runtime_error("Error: No assignment can be made without a server directive");
-	std::string serverSet[6] = {"server_name", "root", "index", "host", "port", "client_max_body_size"};
+	std::string serverSet[5] = {"server_name", "root", "host", "port", "client_max_body_size"};
 	if (key == serverSet[0])
 		setName(value);
 	else if (key == serverSet[1])
 		setRoot(value);
 	else if (key == serverSet[2])
-		setIndex(value);
-	else if (key == serverSet[3])
 		setIp(value);
-	else if (key == serverSet[4])
+	else if (key == serverSet[3])
 		setPort(stringToInt(value));
-	else if (key == serverSet[5])
+	else if (key == serverSet[4])
 		setClientMaxBodySize(stringToInt(value));
 	else
 		throw std::runtime_error("Error: Invalid server directive");
@@ -155,11 +144,6 @@ const std::string& Server::getServerName() const
 const std::string& Server::getServerRoot() const
 {
 	return _serverRoot;
-}
-
-const std::string& Server::getServerIndex() const
-{
-	return _serverIndex;
 }
 
 const std::string& Server::getIp() const

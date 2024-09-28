@@ -18,7 +18,7 @@ class ServerManager
 		std::string _method;
 		std::string _uri;
 		std::string _request;
-		Location *matched_location;
+		Location *_matched_location;
 	public:
 		ServerManager(const std::vector<Server> &);
 		void initializeSockets();

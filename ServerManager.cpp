@@ -16,6 +16,7 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
 	_current_server = NULL;
+	_matched_location = NULL;
 }
 
 void ServerManager::initializeSockets()
@@ -124,10 +125,7 @@ void ServerManager::handleClientRead(int client_socket)
 	{
 		if (bytes_received == -1)
 			throw std::runtime_error("Error: Failed to read from socket");
-		//close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
-/* 		FD_CLR(client_socket, &_read_fd);
-		FD_CLR(client_socket, &_write_fd); */
 		_client_to_server_map.erase(client_socket);//
 		return;
 	}
@@ -140,7 +138,7 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
-	//std::cout << "URI: " << _uri << std::endl;
+	std::cout << _uri << std::endl;
 	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);
@@ -150,25 +148,23 @@ void ServerManager::handleClientRequest(int client_socket)
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
 	{
-		if (_uri == it->getPath())
+		if (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && _uri[it->getPath().size()] == '/'))
 		{
-			matched_location = const_cast<Location *>(&(*it));
+			_matched_location = const_cast<Location *>(&(*it));
 			break;
 		}
 	}
-	if (matched_location == NULL)
+	if (_matched_location == NULL)
 	{
-/* 		close(client_socket);
-		FD_CLR(client_socket, &_master_fd); */
 		sendResponse(client_socket, 404, "Not Found", _uri);
 		return;
 	}
-	if (!matched_location->checkMethod(_method))
+	if (!_matched_location->checkMethod(_method))
 	{
 		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 		return;
 	}
-	std::string index = matched_location->getIndex();
+	std::string index = _matched_location->getIndex();
 	if (_method == "GET")
 	{
 		if (!index.empty())
@@ -217,7 +213,6 @@ std::string ServerManager::parseUri(const std::string &request)
 void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
-	std::cout << "DENEME: " << file_path << std::endl;
 	if (isDirectory(file_path))
 		directoryListing(client_socket, uri, file_path);
 	else
@@ -329,9 +324,8 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 std::string ServerManager::findFilePath(const std::string &uri)
 {
     std::string root = _current_server->getServerRoot();
-	std::cout << matched_location->getIndex() << std::endl;
 	if (uri == "/" || checkIndexFileInPath(root, uri))
-		return root + uri + "/" + matched_location->getIndex();
+		return root + uri + "/" + _matched_location->getIndex();
     return root + uri;
 }
 
@@ -443,7 +437,7 @@ void ServerManager::initStatusCode()
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
 {
-	std::string index_file = file_path + "/" + _current_server->getServerIndex();
+	std::string index_file = file_path + "/" + _matched_location->getIndex();
 	std::ifstream file(index_file.c_str());
 	if (!file.is_open())
 	{
@@ -462,7 +456,7 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
 
 bool ServerManager::checkIndexFileInPath(const std::string& path, const std::string& uri)
 {
-	std::string indexFilePath = path + uri + "/" + matched_location->getIndex();
+	std::string indexFilePath = path + uri + "/" + _matched_location->getIndex();
     std::ifstream file(indexFilePath.c_str());
     if (file.is_open())
         return true;

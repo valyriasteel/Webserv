@@ -140,15 +140,13 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
-	std::cout << "URI: " << _uri << std::endl;
+	//std::cout << "URI: " << _uri << std::endl;
 	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		throw std::runtime_error("Error: Failed to parse request");
 	}
-
-	Location *matched_location = NULL;
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
 	{
@@ -186,6 +184,7 @@ void ServerManager::handleClientRequest(int client_socket)
 		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 	close(client_socket);
 	FD_CLR(client_socket, &_master_fd);
+	_client_to_server_map.erase(client_socket);
 }
 
 bool ServerManager::isServerSocket(int socket)
@@ -218,7 +217,7 @@ std::string ServerManager::parseUri(const std::string &request)
 void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
-
+	std::cout << "DENEME: " << file_path << std::endl;
 	if (isDirectory(file_path))
 		directoryListing(client_socket, uri, file_path);
 	else
@@ -330,8 +329,9 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 std::string ServerManager::findFilePath(const std::string &uri)
 {
     std::string root = _current_server->getServerRoot();
-	if (uri.empty() || uri == "/")
-		return root + "/index.html";
+	std::cout << matched_location->getIndex() << std::endl;
+	if (uri == "/" || checkIndexFileInPath(root, uri))
+		return root + uri + "/" + matched_location->getIndex();
     return root + uri;
 }
 
@@ -392,11 +392,15 @@ void ServerManager::clearClientConnections()
                 FD_CLR(i, &_master_fd);
                 FD_CLR(i, &_read_fd);
                 close(i);
+				_client_to_server_map.erase(i);
             }
         }
         if (FD_ISSET(i, &_write_fd))
             if (_current_server == NULL || i != _current_server->getFd())
-                FD_CLR(i, &_write_fd);
+			{
+				FD_CLR(i, &_write_fd);
+				_client_to_server_map.erase(i);
+			}
     }
 }
 
@@ -454,4 +458,13 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
 		buffer << file.rdbuf();
 		sendResponse(client_socket, 200, buffer.str(), index_file); //
 	}
+}
+
+bool ServerManager::checkIndexFileInPath(const std::string& path, const std::string& uri)
+{
+	std::string indexFilePath = path + uri + "/" + matched_location->getIndex();
+    std::ifstream file(indexFilePath.c_str());
+    if (file.is_open())
+        return true;
+    return false;
 }

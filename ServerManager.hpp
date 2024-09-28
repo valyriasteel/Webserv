@@ -19,7 +19,7 @@ class ServerManager
 		std::string _uri;
 		std::string _request;
 	public:
-		ServerManager(std::vector<Server> &);
+		ServerManager(const std::vector<Server> &);
 		void initializeSockets();
     	void run();
     	void acceptNewConnection(int);
@@ -29,14 +29,14 @@ class ServerManager
 		bool isServerSocket(int);
 		void initStatusCode();
 		void directoryListing(int, const std::string &, const std::string &);
-		std::string parseMethod(std::string &);
-		std::string parseUri(std::string &);
+		std::string parseMethod(const std::string &);
+		std::string parseUri(const std::string &);
 		std::string getContentType(const std::string &);
 		std::string findFilePath(const std::string &);
 		std::string intToString(int);
-		void handleGetRequest(int, std::string &);
-		void handlePostRequest(int, std::string &, std::string &);
-		void handleDeleteRequest(int, std::string &);
+		void handleGetRequest(int, const std::string &);
+		void handlePostRequest(int, const std::string &, const std::string &);
+		void handleDeleteRequest(int, const std::string &);
 		void sendResponse(int, int, const std::string &, const std::string &);
 		void sendAutoIndex(int, const std::string &);
 		bool isDirectory(const std::string &);

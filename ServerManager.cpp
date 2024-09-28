@@ -7,7 +7,7 @@
 #include <sys/dir.h>
 #include <sys/stat.h>
 
-ServerManager::ServerManager(std::vector<Server> &servers)
+ServerManager::ServerManager(const std::vector<Server> &servers)
 {
 	_servers = servers;
 	_max_fd = -1;
@@ -65,7 +65,7 @@ void ServerManager::run()
 	while (true)
 	{
 		_read_fd = _master_fd;
-		//FD_ZERO(&_write_fd);// farklı bir çözüm bul
+		FD_ZERO(&_write_fd);//
 		int activity = select(_max_fd + 1, &_read_fd, &_write_fd, NULL, NULL);
 		if (activity == -1)
 		{
@@ -101,18 +101,18 @@ void ServerManager::acceptNewConnection(int server_socket)
 	FD_SET(_client_socket, &_master_fd);
 	if (_client_socket > _max_fd)
 		_max_fd = _client_socket;
-	_client_to_server_map[_client_socket] = server_socket;// farklı bir çözüm bul
+	_client_to_server_map[_client_socket] = server_socket;//
 }
 
 void ServerManager::handleClientRead(int client_socket)
 {
-	int server_socket = _client_to_server_map[client_socket]; // farklı bir çözüm bul
+	int server_socket = _client_to_server_map[client_socket];//
 
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
 		if (it->getFd() == server_socket)
 		{
-			_current_server = &(*it);// farklı bir çözüm bul
+			_current_server = &(*it);//
 			break;
 		}
 	}
@@ -124,11 +124,11 @@ void ServerManager::handleClientRead(int client_socket)
 	{
 		if (bytes_received == -1)
 			throw std::runtime_error("Error: Failed to read from socket");
-		close(client_socket);
+		//close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
-		FD_CLR(client_socket, &_read_fd);
-		FD_CLR(client_socket, &_write_fd);
-		_client_to_server_map.erase(client_socket);// farklı bir çözüm bul
+/* 		FD_CLR(client_socket, &_read_fd);
+		FD_CLR(client_socket, &_write_fd); */
+		_client_to_server_map.erase(client_socket);//
 		return;
 	}
 	std::string request(buffer, bytes_received);
@@ -140,19 +140,52 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
+	std::cout << "URI: " << _uri << std::endl;
 	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		throw std::runtime_error("Error: Failed to parse request");
 	}
+
+	Location *matched_location = NULL;
+	const std::vector<Location> &locations = _current_server->getLocations();
+	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
+	{
+		if (_uri == it->getPath())
+		{
+			matched_location = const_cast<Location *>(&(*it));
+			break;
+		}
+	}
+	if (matched_location == NULL)
+	{
+/* 		close(client_socket);
+		FD_CLR(client_socket, &_master_fd); */
+		sendResponse(client_socket, 404, "Not Found", _uri);
+		return;
+	}
+	if (!matched_location->checkMethod(_method))
+	{
+		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
+		return;
+	}
+	std::string index = matched_location->getIndex();
 	if (_method == "GET")
-		handleGetRequest(client_socket, _uri);
+	{
+		if (!index.empty())
+			handleGetRequest(client_socket, _uri);
+		else
+			sendResponse(client_socket, 404, "Forbidden", _uri);
+	}
 	else if (_method == "POST")
 		handlePostRequest(client_socket, _uri, _request);
 	else if (_method == "DELETE")
 		handleDeleteRequest(client_socket, _uri);
-	FD_CLR(client_socket, &_write_fd);
+	else
+		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
+	close(client_socket);
+	FD_CLR(client_socket, &_master_fd);
 }
 
 bool ServerManager::isServerSocket(int socket)
@@ -163,7 +196,7 @@ bool ServerManager::isServerSocket(int socket)
 	return false;
 }
 
-std::string ServerManager::parseMethod(std::string &request)
+std::string ServerManager::parseMethod(const std::string &request)
 {
 	size_t pos = request.find(' ');
 	if (pos == std::string::npos)
@@ -171,7 +204,7 @@ std::string ServerManager::parseMethod(std::string &request)
 	return request.substr(0, pos);
 }
 
-std::string ServerManager::parseUri(std::string &request)
+std::string ServerManager::parseUri(const std::string &request)
 {
 	size_t pos1 = request.find(' ');
 	if (pos1 == std::string::npos)
@@ -182,7 +215,7 @@ std::string ServerManager::parseUri(std::string &request)
 	return request.substr(pos1 + 1, pos2 - pos1 - 1);
 }
 
-void ServerManager::handleGetRequest(int client_socket, std::string &uri)
+void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
 
@@ -212,7 +245,7 @@ void ServerManager::handleGetRequest(int client_socket, std::string &uri)
 	}
 }
 
-void ServerManager::handlePostRequest(int client_socket, std::string &uri, std::string &request)
+void ServerManager::handlePostRequest(int client_socket, const std::string &uri, const std::string &request)
 {
 	size_t pos = request.find("\r\n\r\n");
 	if (pos == std::string::npos)
@@ -233,7 +266,7 @@ void ServerManager::handlePostRequest(int client_socket, std::string &uri, std::
 	sendResponse(client_socket, 200, "File uploaded successfully", upload_dir);
 }
 
-void ServerManager::handleDeleteRequest(int client_socket, std::string &uri)
+void ServerManager::handleDeleteRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
 	if (remove(file_path.c_str()) == 0)

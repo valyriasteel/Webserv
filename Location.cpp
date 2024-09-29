@@ -55,7 +55,7 @@ void Location::setAutoindex(const std::string &value)
 {
     if (_autoindex.empty())
     {
-        if (value == "on" || value == "off") // "on" ve "off" kontrolü
+        if (value == "on" || value == "off")
             _autoindex = value;
         else
             throw std::runtime_error("Error: Invalid value for autoindex (must be 'on' or 'off')");
@@ -80,7 +80,7 @@ const std::vector<std::string>& Location::getAllowMethods() const
 	return _allowMethods;
 }
 
-std::string Location::getAutoindex() const
+const std::string& Location::getAutoindex() const
 {
 	return _autoindex;
 }

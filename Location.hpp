@@ -18,8 +18,8 @@ class Location
 		void setAllowMethods(const std::string &);
 		void setAutoindex(const std::string &);
 		bool validateMethod(const std::string &) const;
-		std::string getAutoindex() const;
 		bool checkMethod(const std::string &) const;
+		const std::string &getAutoindex() const;
 		const std::string &getPath() const;	
 		const std::string &getIndex() const;
 		const std::vector<std::string> &getAllowMethods() const;

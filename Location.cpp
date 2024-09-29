@@ -5,7 +5,7 @@ Location::Location()
 {
 	_path = "";
 	_index = "";
-	_autoindex = false;
+	_autoindex = "";
 }
 
 void Location::setPath(const std::string &p)
@@ -51,13 +51,19 @@ bool Location::validateMethod(const std::string &method) const
 	throw std::runtime_error("Error: Invalid method in allow_methods");
 }
 
-void Location::setAutoindex(bool value)
+void Location::setAutoindex(const std::string &value)
 {
-	if (!_autoindex)
-		_autoindex = value;
-	else
-		throw std::runtime_error("Error: Location autoindex already set");
+    if (_autoindex.empty())
+    {
+        if (value == "on" || value == "off") // "on" ve "off" kontrolü
+            _autoindex = value;
+        else
+            throw std::runtime_error("Error: Invalid value for autoindex (must be 'on' or 'off')");
+    }
+    else
+        throw std::runtime_error("Error: Location autoindex already set");
 }
+
 
 const std::string& Location::getPath() const
 {
@@ -74,7 +80,7 @@ const std::vector<std::string>& Location::getAllowMethods() const
 	return _allowMethods;
 }
 
-bool Location::getAutoindex() const
+std::string Location::getAutoindex() const
 {
 	return _autoindex;
 }

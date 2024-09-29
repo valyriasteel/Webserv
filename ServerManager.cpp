@@ -169,9 +169,10 @@ void ServerManager::handleClientRequest(int client_socket)
 		return;
 	}
 	std::string index = matched_location->getIndex();
+	std::string autoindex = matched_location->getAutoindex();
 	if (_method == "GET")
 	{
-		if (!index.empty())
+		if (!index.empty() || !autoindex.empty())
 			handleGetRequest(client_socket, _uri);
 		else
 			sendResponse(client_socket, 404, "Forbidden", _uri);
@@ -369,15 +370,14 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-    const std::vector<Location> &locations = _current_server->getLocations();   
-    for (size_t i = 0; i < locations.size(); ++i)
+	if (matched_location != NULL)
     {
-        const Location &loc = locations[i];      
-        if (loc.getPath() == path || 
-            (path.find(loc.getPath()) == 0 && 
-             (path.length() == loc.getPath().length() || path[loc.getPath().length()] == '/')))
-            return loc.getAutoindex();
+        std::string autoIndex = matched_location->getAutoindex();
+        std::cout << "AUTOINDEX FOR MATCHED LOCATION: " << autoIndex << std::endl;
+        return (autoIndex == "on");
     }
+    
+    std::cout << "No matched location found for path: " << path << std::endl;
     return false;
 }
 
@@ -443,14 +443,19 @@ void ServerManager::initStatusCode()
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
 {
-	std::string index_file = file_path + "/" + _current_server->getServerIndex();
+	std::cout << "FILE PATH: " << file_path << std::endl;
+	std::string index_file = file_path + matched_location->getIndex();
+	std::cout << "INDEX FILE: " << index_file << std::endl;
 	std::ifstream file(index_file.c_str());
-	if (!file.is_open())
+	if (!file.is_open() || index_file == file_path)
 	{
 		if (isAutoIndexEnabled(uri))
 			sendAutoIndex(client_socket, uri);
 		else
+		{
+			std::cout << "girdi" << std::endl;
 			sendResponse(client_socket, 403, "Forbidden", index_file); //
+		}
 	}
 	else
 	{

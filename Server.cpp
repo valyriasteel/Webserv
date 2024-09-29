@@ -62,7 +62,7 @@ void Server::locationDirective(const std::string &key, const std::string &value,
 	else if (key == locationSet[2])
 		_currentLocation->setIndex(value);
 	else if (key == locationSet[3])
-		_currentLocation->setAutoindex(value == "on");
+		_currentLocation->setAutoindex(value);
 	else
 		throw std::runtime_error("Error: Invalid location directive");
 }

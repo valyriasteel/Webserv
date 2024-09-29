@@ -10,15 +10,15 @@ class Location
 		std::string _path;
 		std::string _index;
 		std::vector<std::string> _allowMethods;
-		bool _autoindex;
+		std::string _autoindex;
 	public:
 		Location();
 		void setPath(const std::string &);
 		void setIndex(const std::string &);
 		void setAllowMethods(const std::string &);
-		void setAutoindex(bool);
+		void setAutoindex(const std::string &);
 		bool validateMethod(const std::string &) const;
-		bool getAutoindex() const;
+		std::string getAutoindex() const;
 		bool checkMethod(const std::string &) const;
 		const std::string &getPath() const;	
 		const std::string &getIndex() const;

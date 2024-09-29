@@ -17,6 +17,7 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_write_fd); 
 	_current_server = NULL;
 	_matched_location = NULL;
+	_matched_location = NULL;
 }
 
 void ServerManager::initializeSockets()
@@ -147,7 +148,7 @@ void ServerManager::handleClientRequest(int client_socket)
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
 	{
-		if (_uri == it->getPath())
+		if (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && _uri[it->getPath().size()] == '/'))
 		{
 			_matched_location = const_cast<Location *>(&(*it));
 			break;
@@ -163,14 +164,14 @@ void ServerManager::handleClientRequest(int client_socket)
 		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 		return;
 	}
-	std::string index = _matched_location->getIndex();
-	std::string autoindex = _matched_location->getAutoindex();
 	if (_method == "GET")
 	{
+		std::string index = _matched_location->getIndex();
+		std::string autoindex = _matched_location->getAutoindex();
 		if (!index.empty() || !autoindex.empty())
 			handleGetRequest(client_socket, _uri);
 		else
-			sendResponse(client_socket, 404, "Forbidden", _uri);
+			sendResponse(client_socket, 404, "Not Found", _uri);
 	}
 	else if (_method == "POST")
 		handlePostRequest(client_socket, _uri, _request);
@@ -324,6 +325,8 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 std::string ServerManager::findFilePath(const std::string &uri)
 {
     std::string root = _current_server->getServerRoot();
+	if (uri.find("//") != std::string::npos)
+		return "";
 	if (uri == "/" || checkIndexFileInPath(root, uri))
 		return root + uri + "/" + _matched_location->getIndex();
     return root + uri;

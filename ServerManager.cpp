@@ -16,6 +16,7 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
 	_current_server = NULL;
+	_matched_location = NULL;
 }
 
 void ServerManager::initializeSockets()
@@ -124,10 +125,7 @@ void ServerManager::handleClientRead(int client_socket)
 	{
 		if (bytes_received == -1)
 			throw std::runtime_error("Error: Failed to read from socket");
-		//close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
-/* 		FD_CLR(client_socket, &_read_fd);
-		FD_CLR(client_socket, &_write_fd); */
 		_client_to_server_map.erase(client_socket);//
 		return;
 	}
@@ -140,7 +138,6 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
-	//std::cout << "URI: " << _uri << std::endl;
 	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);
@@ -152,24 +149,22 @@ void ServerManager::handleClientRequest(int client_socket)
 	{
 		if (_uri == it->getPath())
 		{
-			matched_location = const_cast<Location *>(&(*it));
+			_matched_location = const_cast<Location *>(&(*it));
 			break;
 		}
 	}
-	if (matched_location == NULL)
+	if (_matched_location == NULL)
 	{
-/* 		close(client_socket);
-		FD_CLR(client_socket, &_master_fd); */
 		sendResponse(client_socket, 404, "Not Found", _uri);
 		return;
 	}
-	if (!matched_location->checkMethod(_method))
+	if (!_matched_location->checkMethod(_method))
 	{
 		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 		return;
 	}
-	std::string index = matched_location->getIndex();
-	std::string autoindex = matched_location->getAutoindex();
+	std::string index = _matched_location->getIndex();
+	std::string autoindex = _matched_location->getAutoindex();
 	if (_method == "GET")
 	{
 		if (!index.empty() || !autoindex.empty())
@@ -218,7 +213,6 @@ std::string ServerManager::parseUri(const std::string &request)
 void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
-	std::cout << "DENEME: " << file_path << std::endl;
 	if (isDirectory(file_path))
 		directoryListing(client_socket, uri, file_path);
 	else
@@ -330,9 +324,8 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 std::string ServerManager::findFilePath(const std::string &uri)
 {
     std::string root = _current_server->getServerRoot();
-	std::cout << matched_location->getIndex() << std::endl;
 	if (uri == "/" || checkIndexFileInPath(root, uri))
-		return root + uri + "/" + matched_location->getIndex();
+		return root + uri + "/" + _matched_location->getIndex();
     return root + uri;
 }
 
@@ -370,15 +363,9 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-	if (matched_location != NULL)
-    {
-        std::string autoIndex = matched_location->getAutoindex();
-        std::cout << "AUTOINDEX FOR MATCHED LOCATION: " << autoIndex << std::endl;
-        return (autoIndex == "on");
-    }
-    
-    std::cout << "No matched location found for path: " << path << std::endl;
-    return false;
+	if (_matched_location->getPath() == path)
+		return _matched_location->getAutoindex() == "on";
+	return false;
 }
 
 void ServerManager::clearClientConnections()
@@ -443,19 +430,14 @@ void ServerManager::initStatusCode()
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
 {
-	std::cout << "FILE PATH: " << file_path << std::endl;
-	std::string index_file = file_path + matched_location->getIndex();
-	std::cout << "INDEX FILE: " << index_file << std::endl;
+	std::string index_file = file_path + _matched_location->getIndex();
 	std::ifstream file(index_file.c_str());
 	if (!file.is_open() || index_file == file_path)
 	{
 		if (isAutoIndexEnabled(uri))
 			sendAutoIndex(client_socket, uri);
 		else
-		{
-			std::cout << "girdi" << std::endl;
 			sendResponse(client_socket, 403, "Forbidden", index_file); //
-		}
 	}
 	else
 	{
@@ -467,7 +449,7 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
 
 bool ServerManager::checkIndexFileInPath(const std::string& path, const std::string& uri)
 {
-	std::string indexFilePath = path + uri + "/" + matched_location->getIndex();
+	std::string indexFilePath = path + uri + "/" + _matched_location->getIndex();
     std::ifstream file(indexFilePath.c_str());
     if (file.is_open())
         return true;

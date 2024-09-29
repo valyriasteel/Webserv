@@ -138,7 +138,6 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
-	std::cout << _uri << std::endl;
 	if (_method.empty() || _uri.empty())
 	{
 		close(client_socket);

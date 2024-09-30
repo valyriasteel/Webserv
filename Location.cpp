@@ -42,8 +42,8 @@ void Location::setAllowMethods(const std::string &methods)
 
 bool Location::validateMethod(const std::string &method) const
 {
-	static const std::string validMethods[3] = {"GET", "POST", "DELETE"};
-	for (int i = 0; i < 3; i++)
+	static const std::string validMethods[9] = {"GET", "POST", "DELETE", "PUT", "HEAD", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
+	for (int i = 0; i < 9; i++)
 	{
 		if (method == validMethods[i])
 			return true;

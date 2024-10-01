@@ -34,7 +34,9 @@ int Server::stringToInt(const std::string &str)
     int num;
     ss >> num;
     if (ss.fail())
-        throw std::runtime_error("Error: Convert string to int failed");
+        throw std::runtime_error("Error: Convert string to int failed or int overflow");
+	else if (num > std::numeric_limits<int>::max())
+		throw std::runtime_error("Error: Int overflow");
     return num;
 }
 

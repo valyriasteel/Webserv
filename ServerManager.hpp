@@ -42,7 +42,6 @@ class ServerManager
 		void sendAutoIndex(int, const std::string &);
 		bool isDirectory(const std::string &);
 		bool isAutoIndexEnabled(const std::string &);
-		bool checkIndexFileInPath(const std::string&, const std::string&);
 };
 
 #endif

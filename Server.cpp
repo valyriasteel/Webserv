@@ -28,13 +28,15 @@ bool Server::isServerValid() const
 	return true;
 }
 
-int Server::stringToInt(const std::string &str)
+int Server::stringToInt(const std::string &str) const
 {
     std::stringstream ss(str);
     int num;
     ss >> num;
     if (ss.fail())
         throw std::runtime_error("Error: Convert string to int failed");
+	else if (num > std::numeric_limits<int>::max())
+		throw std::runtime_error("Error: Int overflow");
     return num;
 }
 
@@ -77,7 +79,7 @@ void Server::setName(const std::string &name)
 	if (_serverName.empty() && !name.empty())
 		_serverName = name;
 	else
-		throw std::runtime_error("Error: Server name already set");
+		throw std::runtime_error("Error: Server name empty");
 }
 
 void Server::setRoot(const std::string &root)
@@ -85,7 +87,7 @@ void Server::setRoot(const std::string &root)
 	if (_serverRoot.empty() && !root.empty())
 		_serverRoot = root;
 	else
-		throw std::runtime_error("Error: Server root already set");
+		throw std::runtime_error("Error: Server root empty");
 }
 
 void Server::setIp(const std::string &ip)
@@ -93,7 +95,7 @@ void Server::setIp(const std::string &ip)
 	if (_ip.empty() && !ip.empty())
 		_ip = ip;
 	else
-		throw std::runtime_error("Error: Server ip already set");
+		throw std::runtime_error("Error: Server ip empty");
 }
 
 void Server::setPort(int port)
@@ -166,21 +168,11 @@ const std::vector<Location>& Server::getLocations() const
 	return _locations;
 }
 
-const std::map<int, std::string>& Server::getErrorPages() const
-{
-	return _errorPages;
-}
-
 const std::string& Server::getErrorPath(int code)
 {
 	if (_errorPages.find(code) != _errorPages.end())
 		return _errorPages[code];
 	throw std::runtime_error("Error: Error code not found");
-}
-
-Location* Server::getCurrentLocation()
-{
-	return _currentLocation;
 }
 
 int Server::getFd() const

@@ -31,7 +31,7 @@ class Server
 		static void printServerInfo(const std::vector<Server> &);
 		bool isServerValid() const;
 		bool operator==(const Server &) const;
-		int stringToInt(const std::string &);
+		int stringToInt(const std::string &) const;
 		int getPort() const;
 		int getClientMaxBodySize() const;
 		int getFd() const;
@@ -41,8 +41,6 @@ class Server
 		const std::string &getIp() const;
 		const std::string &getErrorPath(int);
 		const std::vector<Location> &getLocations() const;
-		const std::map<int, std::string> &getErrorPages() const;
-		Location *getCurrentLocation();
 };
 
 #endif

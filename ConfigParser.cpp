@@ -73,7 +73,7 @@ bool ConfigParser::serverBlockStart()
 bool ConfigParser::isErrorPage()
 {
     if (!_inServer || _inLocation || _inError)
-        throw std::runtime_error("Error: 'error_page' directive found in invalid context");
+        throw std::runtime_error("Error: 'error_page' directive found outside of server block");
     _inError = true;
     return true;
 }
@@ -98,8 +98,6 @@ void ConfigParser::handleDirective(std::string &line)
     size_t pos;
 
     line = line.substr(0, line.find('#'));
-    if (line[line.length() - 1] == ':')
-        throw std::runtime_error("Error: Missing key in directive");
     pos = line.find(':');
     if (pos == std::string::npos)
         throw std::runtime_error("Error: Missing ':' in directive");

@@ -13,7 +13,7 @@ void Location::setPath(const std::string &p)
 	if (_path.empty() && !p.empty())
 		_path = p;
 	else
-		throw std::runtime_error("Error: Location path already set");
+		throw std::runtime_error("Error: Location path empty");
 }
 
 void Location::setIndex(const std::string &idx)
@@ -21,23 +21,22 @@ void Location::setIndex(const std::string &idx)
 	if (_index.empty() && !idx.empty())
 		_index = idx;
 	else
-		throw std::runtime_error("Error: Location index already set");
+		throw std::runtime_error("Error: Location index empty");
 }
 
 void Location::setAllowMethods(const std::string &methods)
 {
-	if (_allowMethods.empty() && !methods.empty())
+	if (!methods.empty())
 	{
 		std::string method;
 		std::stringstream ss(methods);
 		while (std::getline(ss, method, ','))
 		{
-			if (validateMethod(method))
-				_allowMethods.push_back(method);
+			if (!validateMethod(method) || std::find(_allowMethods.begin(), _allowMethods.end(), method) != _allowMethods.end())
+				throw std::runtime_error("Error: Invalid method in allow_methods or duplicate");	
+			_allowMethods.push_back(method);
 		}
 	}
-	else
-		throw std::runtime_error("Error: Location allow_methods already set");
 }
 
 bool Location::validateMethod(const std::string &method) const
@@ -53,7 +52,7 @@ bool Location::validateMethod(const std::string &method) const
 
 void Location::setAutoindex(const std::string &value)
 {
-    if (_autoindex.empty())
+    if (_autoindex.empty() && !value.empty())
     {
         if (value == "on" || value == "off")
             _autoindex = value;
@@ -61,7 +60,7 @@ void Location::setAutoindex(const std::string &value)
             throw std::runtime_error("Error: Invalid value for autoindex (must be 'on' or 'off')");
     }
     else
-        throw std::runtime_error("Error: Location autoindex already set");
+        throw std::runtime_error("Error: Location autoindex empty");
 }
 
 

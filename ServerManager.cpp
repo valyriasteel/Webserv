@@ -15,7 +15,7 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_master_fd);
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
-	_current_server = NULL;
+	_current_server = NULL;//
 	_matched_location = NULL;//
 	initStatusCode();
 }
@@ -132,7 +132,7 @@ void ServerManager::handleClientRead(int client_socket)
 			break;
 		}
 	}
-	char buffer[4096];
+	char buffer[1024];
 	std::memset(buffer, 0, sizeof(buffer));
 
 	int bytes_received = read(client_socket, buffer, sizeof(buffer));
@@ -166,6 +166,7 @@ void ServerManager::handleClientRequest(int client_socket)
 	{
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
+		FD_CLR(client_socket, &_write_fd);
 		_client_to_server_map.erase(client_socket);
 		throw std::runtime_error("Error: Failed to parse request");
 	}
@@ -188,7 +189,7 @@ void ServerManager::handleClientRequest(int client_socket)
 	}
 	if (!_matched_location->checkMethod(_method))
 	{
-		if (_matched_location->getAllowMethods().empty())
+		if (_matched_location->getAllowMethods().empty() || !_matched_location->checkMethod(_method))
 			sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 		else
 			sendResponse(client_socket, 404, "Not Found", _uri);
@@ -252,7 +253,7 @@ void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 		std::ifstream file(file_path.c_str());
 		if (!file.is_open())
 		{
-			std::string error_file = _current_server->getErrorPages().find(404)->second;
+			std::string error_file = _current_server->getErrorPath(404);
 			error_file = _current_server->getServerRoot() + error_file;
 			std::ifstream file(error_file.c_str());
 			if (file.is_open())
@@ -358,7 +359,7 @@ std::string ServerManager::findFilePath(const std::string &uri)
 	if (uri.find("//") != std::string::npos)
 		return "";
 	if (uri == "/")
-		return root + uri + "/" + _matched_location->getIndex();
+		return root + uri + _matched_location->getIndex();
 	if (uri[uri.size() - 1] == '/')
 		return root + uri + _matched_location->getIndex();		
     return root + uri;
@@ -398,7 +399,7 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-	if (_matched_location->getPath() == path)
+	if (_matched_location->getPath() == path || path.find(_matched_location->getPath() + "/") == 0)
 		return _matched_location->getAutoindex() == "on";
 	return false;
 }
@@ -467,19 +468,23 @@ void ServerManager::initStatusCode()
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
 {
-	std::string index_file = file_path + _matched_location->getIndex();
-	std::ifstream file(index_file.c_str());
-	if (!file.is_open() || index_file == file_path)
-	{
-		if (isAutoIndexEnabled(uri))
-			sendAutoIndex(client_socket, uri);
-		else
-			sendResponse(client_socket, 403, "Forbidden", index_file); //
-	}
+    std::string index_file;
+    if (file_path[file_path.length() - 1] == '/')
+        index_file = file_path;
+    else
+        index_file = file_path + "/" + _matched_location->getIndex();
+	if (isAutoIndexEnabled(uri))
+		sendAutoIndex(client_socket, uri);
 	else
 	{
+		if (_matched_location->getIndex().empty())
+		{
+			sendResponse(client_socket, 403, "Forbidden", index_file);
+			return;
+		}
+		std::ifstream file(index_file.c_str());
 		std::stringstream buffer;
 		buffer << file.rdbuf();
-		sendResponse(client_socket, 200, buffer.str(), index_file); //
+		sendResponse(client_socket, 200, buffer.str(), index_file);
 	}
 }

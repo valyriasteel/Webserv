@@ -172,16 +172,11 @@ void ServerManager::handleClientRequest(int client_socket)
 	}
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
-	{
 		if (!it->getPath().empty() && (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && _uri[it->getPath().size()] == '/')))
-		{
 			_matched_location = const_cast<Location *>(&(*it));
-			break;
-		}
-	}
 	if (_matched_location == NULL)
 	{
-		sendResponse(client_socket, 404, "Not Found", _uri);
+		sendResponse(client_socket, 404, _status_message[404], _uri);
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		_client_to_server_map.erase(client_socket);
@@ -190,9 +185,9 @@ void ServerManager::handleClientRequest(int client_socket)
 	if (!_matched_location->checkMethod(_method))
 	{
 		if (_matched_location->getAllowMethods().empty() || !_matched_location->checkMethod(_method))
-			sendResponse(client_socket, 405, "Method Not Allowed", _uri);
+			sendResponse(client_socket, 405, _status_message[405], _uri);
 		else
-			sendResponse(client_socket, 404, "Not Found", _uri);
+			sendResponse(client_socket, 404, _status_message[404], _uri);
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		_client_to_server_map.erase(client_socket);
@@ -203,14 +198,12 @@ void ServerManager::handleClientRequest(int client_socket)
 		if (!_matched_location->getIndex().empty() || !_matched_location->getAutoindex().empty())
 			handleGetRequest(client_socket, _uri);
 		else
-			sendResponse(client_socket, 404, "Not Found", _uri);
+			sendResponse(client_socket, 404, _status_message[404], _uri);
 	}
 	else if (_method == "POST")
 		handlePostRequest(client_socket, _uri, _request);
 	else if (_method == "DELETE")
 		handleDeleteRequest(client_socket, _uri);
-	else
-		sendResponse(client_socket, 405, "Method Not Allowed", _uri);
 	close(client_socket);
 	FD_CLR(client_socket, &_master_fd);
 	_client_to_server_map.erase(client_socket);
@@ -263,7 +256,7 @@ void ServerManager::handleGetRequest(int client_socket, const std::string &uri)
 				sendResponse(client_socket, 404, buffer.str(), error_file);
 			}
 			else
-				sendResponse(client_socket, 404, "Not Found", file_path);
+				sendResponse(client_socket, 404, _status_message[404], file_path);
 			return;
 		}
 		std::stringstream buffer;
@@ -277,7 +270,7 @@ void ServerManager::handlePostRequest(int client_socket, const std::string &uri,
 	size_t pos = request.find("\r\n\r\n");
 	if (pos == std::string::npos)
 	{
-		sendResponse(client_socket, 400, "Bad Request", uri);
+		sendResponse(client_socket, 400, _status_message[400], uri);
 		return;
 	}
 	std::string content = request.substr(pos + 4);
@@ -285,45 +278,28 @@ void ServerManager::handlePostRequest(int client_socket, const std::string &uri,
 	std::ofstream file(upload_dir.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
-		sendResponse(client_socket, 500, "Internal Server Error", upload_dir);
+		sendResponse(client_socket, 500, _status_message[500], upload_dir);
 		return;
 	}
 	file << content;
 	file.close();
-	sendResponse(client_socket, 200, "File uploaded successfully", upload_dir);
+	sendResponse(client_socket, 200, _status_message[200], upload_dir);
 }
 
 void ServerManager::handleDeleteRequest(int client_socket, const std::string &uri)
 {
 	std::string file_path = findFilePath(uri);
 	if (remove(file_path.c_str()) == 0)
-		sendResponse(client_socket, 200, "File deleted successfully", file_path);
+		sendResponse(client_socket, 200, _status_message[200], file_path);
 	else
-		sendResponse(client_socket, 404, "Not Found", file_path);
+		sendResponse(client_socket, 404, _status_message[404], file_path);
 }
 
 void ServerManager::sendResponse(int client_socket, int status_code, const std::string &content, const std::string &file_path)
 {
-	std::string status_message;
-
-	if (status_code == 200)
-		status_message = "OK";
-	else if (status_code == 400)
-		status_message = "Bad Request";
-	else if (status_code == 403)
-		status_message = "Forbidden";
-	else if (status_code == 404)
-		status_message = "Not Found";
-	else if (status_code == 405)
-		status_message = "Method Not Allowed";
-	else if (status_code == 500)
-		status_message = "Internal Server Error";
-	else
-		status_message = "Unknown";
-
 	std::string content_type = getContentType(file_path);
 
-	std::string response = "HTTP/1.1 " + intToString(status_code) + " " + status_message + "\r\n";
+	std::string response = "HTTP/1.1 " + intToString(status_code) + " " + _status_message[status_code] + "\r\n";
     response += "Content-Length: " + intToString(content.size()) + "\r\n";
     response += "Content-Type: " + content_type + "\r\n";
     response += "\r\n";
@@ -375,7 +351,7 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 	DIR *dir = opendir(dir_path.c_str());
 	if (dir == NULL)
 	{
-		sendResponse(client_socket, 404, "Not Found", uri);
+		sendResponse(client_socket, 404, _status_message[404], uri);
 		return;
 	}
 	struct dirent *entry;
@@ -406,25 +382,23 @@ bool ServerManager::isAutoIndexEnabled(const std::string &path)
 
 void ServerManager::clearClientConnections()
 {
-    for (int i = 3; i <= _max_fd; i++)
-    {
-        if (FD_ISSET(i, &_read_fd))
-        {
-            if (_current_server == NULL || i != _current_server->getFd())
-            {
-                FD_CLR(i, &_master_fd);
-                FD_CLR(i, &_read_fd);
-                close(i);
-				_client_to_server_map.erase(i);
-            }
-        }
-        if (FD_ISSET(i, &_write_fd))
-            if (_current_server == NULL || i != _current_server->getFd())
-			{
-				FD_CLR(i, &_write_fd);
-				_client_to_server_map.erase(i);
-			}
-    }
+	for (std::map<int, int>::iterator it = _client_to_server_map.begin(); it != _client_to_server_map.end();)
+	{
+		if (FD_ISSET(it->first, &_read_fd))
+		{
+			close(it->first);
+			FD_CLR(it->first, &_master_fd);
+			FD_CLR(it->first, &_read_fd);
+			it = _client_to_server_map.erase(it);
+		}
+		else if (FD_ISSET(it->first, &_write_fd))
+		{
+			FD_CLR(it->first, &_write_fd);
+			it = _client_to_server_map.erase(it);
+		}
+		else
+			it++;
+	}
 }
 
 std::string ServerManager::getContentType(const std::string &file_path)
@@ -455,15 +429,15 @@ std::string ServerManager::intToString(int number)
 
 void ServerManager::initStatusCode()
 {
-	_status_code.insert(std::make_pair(200, "OK"));
-	_status_code.insert(std::make_pair(400, "Bad Request"));
-	_status_code.insert(std::make_pair(403, "Forbidden"));
-	_status_code.insert(std::make_pair(404, "Not Found"));
-	_status_code.insert(std::make_pair(405, "Method Not Allowed"));
-	_status_code.insert(std::make_pair(413, "Payload Too Large"));
-	_status_code.insert(std::make_pair(500, "Internal Server Error"));
-	_status_code.insert(std::make_pair(501, "Not Implemented"));
-	_status_code.insert(std::make_pair(502, "Bad Gateway"));
+	_status_message.insert(std::make_pair(200, "OK"));
+	_status_message.insert(std::make_pair(400, "Bad Request"));
+	_status_message.insert(std::make_pair(403, "Forbidden"));
+	_status_message.insert(std::make_pair(404, "Not Found"));
+	_status_message.insert(std::make_pair(405, "Method Not Allowed"));
+	_status_message.insert(std::make_pair(413, "Payload Too Large"));
+	_status_message.insert(std::make_pair(500, "Internal Server Error"));
+	_status_message.insert(std::make_pair(501, "Not Implemented"));
+	_status_message.insert(std::make_pair(502, "Bad Gateway"));
 }
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
@@ -479,7 +453,7 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
 	{
 		if (_matched_location->getIndex().empty())
 		{
-			sendResponse(client_socket, 403, "Forbidden", index_file);
+			sendResponse(client_socket, 403, _status_message[403], index_file);
 			return;
 		}
 		std::ifstream file(index_file.c_str());

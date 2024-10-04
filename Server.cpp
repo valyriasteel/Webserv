@@ -7,6 +7,7 @@ Server::Server()
 	_serverName = "";
 	_serverRoot = "";
 	_ip = "";
+	_serverIndex = "";
 	_port = -1;
 	_clientMaxBodySize = -1;
 	_currentLocation = NULL;
@@ -23,7 +24,7 @@ bool Server::operator==(const Server &server) const
 
 bool Server::isServerValid() const
 {
-	if (_serverName.empty() || _port == -1 || _ip.empty() || _serverRoot.empty() || _locations.empty() || _clientMaxBodySize == -1 || _errorPages.empty())
+	if (_serverName.empty() || _port == -1 || _ip.empty() || _serverRoot.empty() || _locations.empty() || _clientMaxBodySize == -1 || _errorPages.empty() || _serverIndex.empty())
 		return false;
 	return true;
 }
@@ -48,7 +49,7 @@ void Server::setErrorPage(const std::string &code, const std::string &path, bool
 	if (code_int >= 100 && code_int < 600 && _errorPages.find(code_int) == _errorPages.end())
 		_errorPages[code_int] = path;
 	else
-		throw std::runtime_error("Error: Invalid error code or duplicate error code");
+		throw std::runtime_error("Error: Invalid error code or duplicate");
 }
 
 void Server::locationDirective(const std::string &key, const std::string &value, bool inServer)
@@ -79,7 +80,7 @@ void Server::setName(const std::string &name)
 	if (_serverName.empty() && !name.empty())
 		_serverName = name;
 	else
-		throw std::runtime_error("Error: Server name empty");
+		throw std::runtime_error("Error: Server name empty or duplicate");
 }
 
 void Server::setRoot(const std::string &root)
@@ -87,7 +88,7 @@ void Server::setRoot(const std::string &root)
 	if (_serverRoot.empty() && !root.empty())
 		_serverRoot = root;
 	else
-		throw std::runtime_error("Error: Server root empty");
+		throw std::runtime_error("Error: Server root empty or duplicate");
 }
 
 void Server::setIp(const std::string &ip)
@@ -95,7 +96,7 @@ void Server::setIp(const std::string &ip)
 	if (_ip.empty() && !ip.empty())
 		_ip = ip;
 	else
-		throw std::runtime_error("Error: Server ip empty");
+		throw std::runtime_error("Error: Server ip empty or duplicate");
 }
 
 void Server::setPort(int port)
@@ -103,7 +104,7 @@ void Server::setPort(int port)
 	if (port > 0 && port < 65535 && _port == -1)
 		_port = port;
 	else
-		throw std::runtime_error("Error: Server port invalid");
+		throw std::runtime_error("Error: Server port invalid or duplicate");
 }
 
 void Server::setClientMaxBodySize(int size)
@@ -111,7 +112,15 @@ void Server::setClientMaxBodySize(int size)
 	if (_clientMaxBodySize == -1 && size >= 0)
 		_clientMaxBodySize = size;
 	else
-		throw std::runtime_error("Error: Server client_max_body_size invalid");
+		throw std::runtime_error("Error: Server client_max_body_size invalid or duplicate");
+}
+
+void Server::setServerIndex(const std::string &index)
+{
+	if (_serverIndex.empty() && !index.empty())
+		_serverIndex = index;
+	else
+		throw std::runtime_error("Error: Server index empty or duplicate");
 }
 
 void Server::setFd(int fd)
@@ -123,7 +132,7 @@ void Server::serverDirective(const std::string &key, const std::string &value, b
 {
 	if (!inServer)
 		throw std::runtime_error("Error: No assignment can be made without a server directive");
-	std::string serverSet[5] = {"server_name", "root", "host", "port", "client_max_body_size"};
+	std::string serverSet[6] = {"server_name", "root", "host", "port", "client_max_body_size", "default_index"};
 	if (key == serverSet[0])
 		setName(value);
 	else if (key == serverSet[1])
@@ -134,6 +143,8 @@ void Server::serverDirective(const std::string &key, const std::string &value, b
 		setPort(stringToInt(value));
 	else if (key == serverSet[4])
 		setClientMaxBodySize(stringToInt(value));
+	else if (key == serverSet[5])
+		setServerIndex(value);
 	else
 		throw std::runtime_error("Error: Invalid server directive");
 }
@@ -146,6 +157,11 @@ const std::string& Server::getServerName() const
 const std::string& Server::getServerRoot() const
 {
 	return _serverRoot;
+}
+
+const std::string& Server::getServerIndex() const
+{
+	return _serverIndex;
 }
 
 const std::string& Server::getIp() const

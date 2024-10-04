@@ -14,7 +14,7 @@ class ServerManager
 		std::vector<Server> _servers;
 		Server *_current_server;
 		std::map<int, int> _client_to_server_map;
-		std::map<int, std::string> _status_code;
+		std::map<int, std::string> _status_message;
 		std::string _method;
 		std::string _uri;
 		std::string _request;

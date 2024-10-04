@@ -13,7 +13,7 @@ void Location::setPath(const std::string &p)
 	if (_path.empty() && !p.empty())
 		_path = p;
 	else
-		throw std::runtime_error("Error: Location path empty");
+		throw std::runtime_error("Error: Location path empty or duplicate");
 }
 
 void Location::setIndex(const std::string &idx)
@@ -21,7 +21,7 @@ void Location::setIndex(const std::string &idx)
 	if (_index.empty() && !idx.empty())
 		_index = idx;
 	else
-		throw std::runtime_error("Error: Location index empty");
+		throw std::runtime_error("Error: Location index empty or duplicate");
 }
 
 void Location::setAllowMethods(const std::string &methods)
@@ -60,7 +60,7 @@ void Location::setAutoindex(const std::string &value)
             throw std::runtime_error("Error: Invalid value for autoindex (must be 'on' or 'off')");
     }
     else
-        throw std::runtime_error("Error: Location autoindex empty");
+        throw std::runtime_error("Error: Location autoindex empty or duplicate");
 }
 
 

@@ -162,18 +162,15 @@ void ServerManager::handleClientRequest(int client_socket)
 {
 	_method = parseMethod(_request);
 	_uri = parseUri(_request);
-	if (_method.empty() || _uri.empty())
-	{
-		close(client_socket);
-		FD_CLR(client_socket, &_master_fd);
-		FD_CLR(client_socket, &_write_fd);
-		_client_to_server_map.erase(client_socket);
-		throw std::runtime_error("Error: Failed to parse request");
-	}
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
+	{
 		if (!it->getPath().empty() && (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && _uri[it->getPath().size()] == '/')))
+		{
 			_matched_location = const_cast<Location *>(&(*it));
+			break;
+		}
+	}
 	if (_matched_location == NULL)
 	{
 		sendResponse(client_socket, 404, _status_message[404], _uri);
@@ -220,19 +217,13 @@ bool ServerManager::isServerSocket(int socket)
 std::string ServerManager::parseMethod(const std::string &request)
 {
 	size_t pos = request.find(' ');
-	if (pos == std::string::npos)
-		return "";
 	return request.substr(0, pos);
 }
 
 std::string ServerManager::parseUri(const std::string &request)
 {
 	size_t pos1 = request.find(' ');
-	if (pos1 == std::string::npos)
-		return "";
 	size_t pos2 = request.find(' ', pos1 + 1);
-	if (pos2 == std::string::npos)
-		return "";
 	return request.substr(pos1 + 1, pos2 - pos1 - 1);
 }
 
@@ -334,9 +325,7 @@ std::string ServerManager::findFilePath(const std::string &uri)
     std::string root = _current_server->getServerRoot();
 	if (uri.find("//") != std::string::npos)
 		return "";
-	if (uri == "/")
-		return root + uri + _matched_location->getIndex();
-	if (uri[uri.size() - 1] == '/')
+	if (uri == "/" || uri[uri.size() - 1] == '/')
 		return root + uri + _matched_location->getIndex();		
     return root + uri;
 }
@@ -359,7 +348,10 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 	{
 		if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
 			continue;
-		response += "<li><a href=\"" + uri + "/" + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
+		if (uri[uri.size() - 1] == '/')
+			response += "<li><a href=\"" + uri + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
+		else
+			response += "<li><a href=\"" + uri + "/" + std::string(entry->d_name) + "\">" + std::string(entry->d_name) + "</a></li>";
 	}
 	response += "</ul></body></html>";
 	sendResponse(client_socket, 200, response, uri);
@@ -388,7 +380,6 @@ void ServerManager::clearClientConnections()
 		{
 			close(it->first);
 			FD_CLR(it->first, &_master_fd);
-			FD_CLR(it->first, &_read_fd);
 			it = _client_to_server_map.erase(it);
 		}
 		else if (FD_ISSET(it->first, &_write_fd))

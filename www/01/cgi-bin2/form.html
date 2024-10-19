@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Bilgileri Formu</title>
+</head>
+<body>
+    <h1>Kullanıcı Bilgileri Formu</h1>
+
+    <!-- Form verileri form_action.php'ye yönlendirilecek -->
+    <form action="./form_action.php" method="POST">
+        <label for="isim">İsim:</label><br>
+        <input type="text" id="isim" name="isim" required><br><br>
+
+        <label for="soyisim">Soyisim:</label><br>
+        <input type="text" id="soyisim" name="soyisim" required><br><br>
+
+        <label for="kullanici_adi">Kullanıcı Adı:</label><br>
+        <input type="text" id="kullanici_adi" name="kullanici_adi" required><br><br>
+
+        <label for="mesaj">Mesaj:</label><br>
+        <textarea id="mesaj" name="mesaj" rows="4" required></textarea><br><br>
+
+        <input type="submit" name="gonder" value="Gönder">
+    </form>
+</body>
+</html>

@@ -1,5 +1,6 @@
 #include "Location.hpp"
 #include <sstream>
+#include <algorithm>
 
 Location::Location()
 {
@@ -47,7 +48,7 @@ bool Location::validateMethod(const std::string &method) const
 		if (method == validMethods[i])
 			return true;
 	}
-	throw std::runtime_error("Error: Invalid method in allow_methods");
+	return false;
 }
 
 void Location::setAutoindex(const std::string &value)

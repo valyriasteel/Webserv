@@ -1,5 +1,6 @@
 #include "ConfigParser.hpp"
 #include <fstream>
+#include <algorithm>
 
 ConfigParser::ConfigParser()
 {

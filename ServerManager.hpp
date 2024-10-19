@@ -2,6 +2,7 @@
 # define SERVER_MANAGER_HPP
 
 # include "Server.hpp"
+# include <sys/select.h>
 
 class ServerManager
 {
@@ -19,6 +20,7 @@ class ServerManager
 		std::string _uri;
 		std::string _request;
 		Location *_matched_location;
+		std::string _request_body;
 	public:
 		ServerManager(const std::vector<Server> &);
 		void initializeSockets();
@@ -34,14 +36,20 @@ class ServerManager
 		std::string parseUri(const std::string &);
 		std::string getContentType(const std::string &);
 		std::string findFilePath(const std::string &);
+		std::string parseQueryString(const std::string &);
 		std::string intToString(int);
-		void handleGetRequest(int, const std::string &);
-		void handlePostRequest(int, const std::string &, const std::string &);
-		void handleDeleteRequest(int, const std::string &);
+		std::string handleCgiRequest(int, const std::string &);
+		void handleGetRequest(int);
+		void handlePostRequest(int);
+		void handleCgiPostRequest(int);
+		void handleDeleteRequest(int);
 		void sendResponse(int, int, const std::string &, const std::string &);
 		void sendAutoIndex(int, const std::string &);
+		std::string getHeaderValue(const std::string &);
 		bool isDirectory(const std::string &);
+		bool isExecutable(const std::string &);
 		bool isAutoIndexEnabled(const std::string &);
+		bool isCgiScript(const std::string &);
 };
 
 #endif

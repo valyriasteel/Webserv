@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <string>
 
 ServerManager::ServerManager(const std::vector<Server> &servers)
 {
@@ -160,7 +162,7 @@ void ServerManager::handleClientRead(int client_socket)
             size_t content_length_pos = request.find("Content-Length: ");
             if (content_length_pos != std::string::npos)
             {
-                content_length = std::stoul(request.substr(content_length_pos + 16));
+                content_length = strtoul(request.substr(content_length_pos + 16).c_str(), NULL, 10);
                 std::cerr << "Content-Length: " << content_length << std::endl;
             }
             // Gövdeyi aldıysanız döngüyü sonlandırın
@@ -621,7 +623,7 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
     std::string interpreter;
     if (file_path.find(".php") != std::string::npos)
     {
-        interpreter = "/usr/bin/php";  // Adjust path if necessary
+        interpreter = "/usr/bin/php-cgi";  // Adjust path if necessary
     }
     else if (file_path.find(".py") != std::string::npos)
     {
@@ -676,13 +678,16 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
         char *argv[] = {strdup(interpreter.c_str()), strdup(file_path.c_str()), NULL};
 
         // Prepare environment variables
+        std::stringstream ss;
+        ss << _request_body.size();
         std::string script_filename = "SCRIPT_FILENAME=" + file_path;
         std::string request_method = "REQUEST_METHOD=" + _method;
         std::string query_string = "QUERY_STRING=" + parseQueryString(_uri);
-        std::string content_length = "CONTENT_LENGTH=" + std::to_string(_request_body.size());
+        std::string content_length = "CONTENT_LENGTH=" + ss.str();
         std::string content_type_env = "CONTENT_TYPE=" + getHeaderValue("Content-Type");
 
         char *envp[] = {
+            strdup("REDIRECT_STATUS=200"),
             strdup(script_filename.c_str()),
             strdup(request_method.c_str()),
             strdup(query_string.c_str()),
@@ -758,11 +763,13 @@ void ServerManager::handleCgiPostRequest(int client_socket)
 
         // URI'den sorgu parametrelerini ayıkla
         std::string query_string = parseQueryString(_uri);
+        std::stringstream ss;
+        ss << _request_body.size();
 
         // Ortam değişkenlerini oluşturuyoruz
         char *envp[] = {
             strdup(("REQUEST_METHOD=" + _method).c_str()),
-            strdup(("CONTENT_LENGTH=" + std::to_string(_request_body.size())).c_str()),  // POST isteğinde content-length önemlidir
+            strdup(("CONTENT_LENGTH=" + ss.str()).c_str()),  // POST isteğinde content-length önemlidir
             strdup(("QUERY_STRING=" + query_string).c_str()),  // URI'den sorgu parametrelerini alıyoruz
             strdup(("SCRIPT_NAME=" + _uri).c_str()),
             NULL

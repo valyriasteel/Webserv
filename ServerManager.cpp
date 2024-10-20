@@ -198,6 +198,7 @@ void ServerManager::handleClientRead(int client_socket)
 
     _request = request;  // İstek verisini kaydedin
     _request_body = request_body;  // POST gövdesini kaydedin
+    std::cout << "+------------------+" <<_request_body << std::endl; 
 
     //std::cout << "Request: " << _request << std::endl;
     FD_SET(client_socket, &_write_fd);  // Yazma işlemine hazır hale getiriyoruz
@@ -623,7 +624,7 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
     std::string interpreter;
     if (file_path.find(".php") != std::string::npos)
     {
-        interpreter = "/usr/bin/php-cgi";  // Adjust path if necessary
+        interpreter = "/goinfre/bbosnak/homebrew/bin/php-cgi";  // Adjust path if necessary
     }
     else if (file_path.find(".py") != std::string::npos)
     {

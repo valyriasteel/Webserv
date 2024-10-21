@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>400 Bad Request</title>
+    <style>
+        body {
+            background-color: #272727;
+            color: #e0e0e0;
+            font-family: 'Lucida Console', Monaco, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .error-box {
+            text-align: center;
+            animation: slide-in 1s forwards;
+        }
+
+        h1 {
+            font-size: 100px;
+            margin: 0;
+        }
+
+        p {
+            font-size: 22px;
+            margin: 15px 0;
+        }
+
+        a {
+            color: #e74c3c;
+            text-decoration: none;
+            border: 2px solid #e74c3c;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #e74c3c;
+            color: #272727;
+        }
+
+        @keyframes slide-in {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-box">
+        <h1>400</h1>
+        <p>Your request is invalid!</p>
+    </div>
+</body>
+</html>

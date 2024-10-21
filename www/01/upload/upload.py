@@ -11,7 +11,7 @@ def render_page(message=""):
     print("<h1>File Upload</h1>")
     
     # Dosya yükleme formu
-    print('<form enctype="multipart/form-data" action="/cgi-bin/upload.py" method="POST">')
+    print('<form enctype="multipart/form-data" action="/upload/upload.py" method="POST">')
     print('<input type="file" name="uploaded_file"><br>')
     print('<input type="submit" value="Upload">')
     print('</form>')
@@ -26,7 +26,7 @@ def render_page(message=""):
         for filename in os.listdir(UPLOAD_DIR):
             file_path = os.path.join(UPLOAD_DIR, filename)
             if os.path.isfile(file_path):
-                print(f"<p>{filename} <form action='/cgi-bin/upload.py' method='POST' style='display:inline;'>")
+                print(f"<p>{filename} <form action='/upload/upload.py' method='POST' style='display:inline;'>")
                 print(f"<input type='hidden' name='delete_file' value='{filename}'>")
                 print(f"<input type='submit' value='Delete'></form></p>")
     print("</body></html>")

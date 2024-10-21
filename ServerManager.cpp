@@ -22,8 +22,8 @@ ServerManager::ServerManager(const std::vector<Server> &servers)
 	FD_ZERO(&_master_fd);
 	FD_ZERO(&_read_fd);
 	FD_ZERO(&_write_fd); 
-	_current_server = NULL;//
-	_matched_location = NULL;//
+	_current_server = NULL;
+	_matched_location = NULL;
 	initStatusCode();
 }
 
@@ -80,14 +80,14 @@ void ServerManager::run()
 	while (true)
 	{
 		_read_fd = _master_fd;
-		FD_ZERO(&_write_fd);//
+		FD_ZERO(&_write_fd);
 		if (select(_max_fd + 1, &_read_fd, &_write_fd, NULL, NULL) < 0)
 		{
 			if (errno == EINTR)
 				continue;
 			else
 			{
-				clearClientConnections();//
+				clearClientConnections();
 				throw std::runtime_error("Error: Failed to select");
 			}
 		}
@@ -130,7 +130,6 @@ void ServerManager::acceptNewConnection(int server_socket)
 void ServerManager::handleClientRead(int client_socket)
 {
     int server_socket = _client_to_server_map[client_socket];
-    // Sunucuyu eşleştirme
     for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
     {
         if (it->getFd() == server_socket)
@@ -153,28 +152,34 @@ void ServerManager::handleClientRead(int client_socket)
         request.append(buffer, bytes_received);
         total_bytes_received += bytes_received;
         
-        // İstek başlıklarının tamamlandığını kontrol edin
         if (!headers_complete && request.find("\r\n\r\n") != std::string::npos)
         {
             headers_complete = true;
 
-            // POST isteği için Content-Length bulun ve gövde boyutunu belirleyin
             size_t content_length_pos = request.find("Content-Length: ");
             if (content_length_pos != std::string::npos)
             {
                 content_length = strtoul(request.substr(content_length_pos + 16).c_str(), NULL, 10);
-                std::cerr << "Content-Length: " << content_length << std::endl;
+                if ((int)content_length > _current_server->getClientMaxBodySize())
+                {
+                    std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(413).c_str());
+                    if (file.is_open())
+                    {
+                        std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(413);
+                        std::stringstream buffer;
+                        buffer << file.rdbuf();
+                        sendResponse(client_socket, 413, buffer.str(), file_path);
+                    }
+                    else
+                        sendResponse(client_socket, 413, _status_message[413], _uri);
+                    close(client_socket);
+                    FD_CLR(client_socket, &_master_fd);
+                    _client_to_server_map.erase(client_socket);
+                    return;
+                }
             }
-            // Gövdeyi aldıysanız döngüyü sonlandırın
             if (total_bytes_received >= (request.find("\r\n\r\n") + 4 + content_length))
-            {
-                std::cerr << "Full request received" << std::endl;
                 break;
-            }
-            else
-            {
-                std::cerr << "Incomplete request: received " << total_bytes_received << " bytes out of " << content_length << "." << std::endl;
-            }
         }
         else if (headers_complete)
         {
@@ -183,7 +188,6 @@ void ServerManager::handleClientRead(int client_socket)
         }
     }
 
-    // Eğer bağlantı kapatıldıysa
     if (bytes_received == 0)
     {
         close(client_socket);
@@ -192,18 +196,14 @@ void ServerManager::handleClientRead(int client_socket)
         return;
     }
 
-    // Gövdeyi ayrıştırın ve POST verilerini CGI'ye aktaracak fonksiyonu çağırın
     size_t body_pos = request.find("\r\n\r\n");
-    std::string request_body = request.substr(body_pos + 4, content_length);  // Gövdeyi ayır
+    std::string request_body = request.substr(body_pos + 4, content_length);
 
-    _request = request;  // İstek verisini kaydedin
-    _request_body = request_body;  // POST gövdesini kaydedin
-    std::cout << "+------------------+" <<_request_body << std::endl; 
+    _request = request;
+    _request_body = request_body;
 
-    //std::cout << "Request: " << _request << std::endl;
-    FD_SET(client_socket, &_write_fd);  // Yazma işlemine hazır hale getiriyoruz
+    FD_SET(client_socket, &_write_fd);
 }
-
 
 void ServerManager::handleClientRequest(int client_socket)
 {
@@ -212,7 +212,7 @@ void ServerManager::handleClientRequest(int client_socket)
 	const std::vector<Location> &locations = _current_server->getLocations();
 	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); it++)
 	{
-		if (!it->getPath().empty() && (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && _uri[it->getPath().size()] == '/')))
+		if (!it->getPath().empty() && (_uri == it->getPath() || (_uri.find(it->getPath()) == 0 && (_uri[it->getPath().size()] == '/')) ||  (_uri == it->getPath() + it->getIndex())))
 		{
 			_matched_location = const_cast<Location *>(&(*it));
 			break;
@@ -220,7 +220,16 @@ void ServerManager::handleClientRequest(int client_socket)
 	}
 	if (_matched_location == NULL)
 	{
-		sendResponse(client_socket, 404, _status_message[404], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(404).c_str());
+        if (file.is_open())
+        {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(404);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 404, buffer.str(), file_path);
+        }
+        else
+		    sendResponse(client_socket, 404, _status_message[404], _uri);
 		close(client_socket);
 		FD_CLR(client_socket, &_master_fd);
 		_client_to_server_map.erase(client_socket);
@@ -229,7 +238,18 @@ void ServerManager::handleClientRequest(int client_socket)
 	if (!_matched_location->checkMethod(_method))
 	{
 		if (_matched_location->getAllowMethods().empty() || !_matched_location->checkMethod(_method))
-			sendResponse(client_socket, 405, _status_message[405], _uri);
+        {
+            std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(405).c_str());
+            if (file.is_open())
+            {
+                std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(405);
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                sendResponse(client_socket, 405, buffer.str(), file_path);
+            }
+            else
+			    sendResponse(client_socket, 405, _status_message[405], _uri);
+        }
 		else
 			sendResponse(client_socket, 404, _status_message[404], _uri);
 		close(client_socket);
@@ -242,14 +262,36 @@ void ServerManager::handleClientRequest(int client_socket)
 		if (!_matched_location->getIndex().empty() || !_matched_location->getAutoindex().empty())
 			handleGetRequest(client_socket);
 		else
-			sendResponse(client_socket, 404, _status_message[404], _uri);
+        {
+            std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(404).c_str());
+            if (file.is_open())
+            {
+                std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(404);
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                sendResponse(client_socket, 404, buffer.str(), file_path);
+            }
+            else
+			    sendResponse(client_socket, 404, _status_message[404], _uri);
+        }
 	}
 	else if (_method == "POST")
 		handlePostRequest(client_socket);
 	else if (_method == "DELETE")
 		handleDeleteRequest(client_socket);
 	else
-		sendResponse(client_socket, 405, _status_message[405], _uri);
+    {
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(405).c_str());
+        if (file.is_open())
+        {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(405);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 405, buffer.str(), file_path);
+        }
+        else
+		    sendResponse(client_socket, 405, _status_message[405], _uri);
+    }
 	close(client_socket);
 	FD_CLR(client_socket, &_master_fd);
 	FD_CLR(client_socket, &_write_fd);
@@ -289,18 +331,21 @@ void ServerManager::handleGetRequest(int client_socket)
     {
         if (isCgiScript(file_path))
         {
-            std::cout << "CGI script found: " << file_path << std::endl;
             std::string cgi_response = handleCgiRequest(client_socket, file_path);
-            std::cout << "----CGI response----\n" << cgi_response << std::endl;
             if (!cgi_response.empty())
-            {
-                std::cout << "Sending CGI response" << std::endl;
                 sendResponse(client_socket, 200, cgi_response, file_path);
-            } 
             else
             {
-                std::cout << "Failed to execute CGI script" << std::endl;
-                sendResponse(client_socket, 500, _status_message[500], file_path);
+                std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+                if (file.is_open())
+                {
+                    std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
+                    std::stringstream buffer;
+                    buffer << file.rdbuf();
+                    sendResponse(client_socket, 500, buffer.str(), file_path);
+                }
+                else
+                    sendResponse(client_socket, 500, _status_message[500], file_path);
             }
         }
         else
@@ -318,9 +363,7 @@ void ServerManager::handleGetRequest(int client_socket)
                     sendResponse(client_socket, 404, buffer.str(), error_file);
                 }
                 else
-                {
                     sendResponse(client_socket, 404, _status_message[404], file_path);
-                }
                 return;
             }
             std::stringstream buffer;
@@ -330,37 +373,40 @@ void ServerManager::handleGetRequest(int client_socket)
     }
 }
 
-
 void ServerManager::handlePostRequest(int client_socket)
 {
     size_t pos = _request.find("\r\n\r\n");
     if (pos == std::string::npos)
     {
-        sendResponse(client_socket, 400, _status_message[400], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(400).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 400, buffer.str(), _uri);
+        }
+        else
+            sendResponse(client_socket, 400, _status_message[400], _uri);
         return;
     }
     
-    std::string body = _request_body; // The body should already be set by handleClientRead
+    std::string body = _request_body;
     std::string content_type = getHeaderValue("Content-Type");
 
     if (content_type.find("multipart/form-data") != std::string::npos || content_type.find("application/x-www-form-urlencoded") != std::string::npos)
     {
         if (content_type.find("multipart/form-data") != std::string::npos)
         {
-            // Extract boundary
             std::string boundary;
             size_t boundary_pos = content_type.find("boundary=");
             if (boundary_pos != std::string::npos)
-            {
                 boundary = "--" + content_type.substr(boundary_pos + 9);
-            }
             else
             {
                 sendResponse(client_socket, 400, "Bad Request: Boundary not found", _uri);
                 return;
             }
 
-            // Parse multipart content
             size_t part_start = body.find(boundary);
             while (part_start != std::string::npos)
             {
@@ -374,13 +420,12 @@ void ServerManager::handlePostRequest(int client_socket)
                 if (header_end == std::string::npos)
                 {
                     part_start = body.find(boundary, part_end + boundary.length());
-                    continue;  // Skip malformed part
+                    continue;
                 }
 
                 std::string part_headers = part.substr(0, header_end);
                 std::string part_body = part.substr(header_end + 4);
 
-                // Extract filename
                 std::string filename;
                 size_t filename_pos = part_headers.find("filename=\"");
                 if (filename_pos != std::string::npos)
@@ -392,51 +437,21 @@ void ServerManager::handlePostRequest(int client_socket)
                 else
                 {
                     part_start = body.find(boundary, part_end + boundary.length());
-                    continue;  // Skip parts that are not files
+                    continue;
                 }
-
-/*                 // Save the file
-                std::string upload_dir = _current_server->getServerRoot() + "/uploads";
-                struct stat st;
-                if (stat(upload_dir.c_str(), &st) == -1)
-                {
-                    mkdir(upload_dir.c_str(), 0755);
-                }
-
-                std::string file_path = upload_dir + "/" + filename;
-                std::ofstream file(file_path.c_str(), std::ios::binary);
-                if (!file.is_open())
-                {
-                    sendResponse(client_socket, 500, _status_message[500], file_path);
-                    return;
-                }
-
-                // Writing the file content
-                file.write(part_body.data(), part_body.size());
-                file.close(); */
-
-                // Move to the next part
                 part_start = body.find(boundary, part_end + boundary.length());
             }
         }
-        // CGI script'ini çalıştır ve sonucunu döndür
         std::string file_path = findFilePath(_uri);
-        std::cout << "File path: " << file_path << std::endl;
         std::string cgi_response = handleCgiRequest(client_socket, file_path);
-        std::cout << "CGI response: " << cgi_response << std::endl;
         if (!cgi_response.empty())
             sendResponse(client_socket, 200, cgi_response, file_path);
         else
             sendResponse(client_socket, 500, _status_message[500], _uri);
     }
     else
-    {
         sendResponse(client_socket, 400, "Bad Request: Unsupported Content-Type", _uri);
-    }
 }
-
-
-
 
 void ServerManager::handleDeleteRequest(int client_socket)
 {
@@ -449,7 +464,11 @@ void ServerManager::handleDeleteRequest(int client_socket)
 
 void ServerManager::sendResponse(int client_socket, int status_code, const std::string &content, const std::string &file_path)
 {
-	std::string content_type = getContentType(file_path);
+    std::string content_type;
+    if (isAutoIndexEnabled(file_path))
+        content_type = "text/html";
+    else
+	    content_type = getContentType(file_path);
 
 	std::string response = "HTTP/1.1 " + intToString(status_code) + " " + _status_message[status_code] + "\r\n";
     response += "Content-Length: " + intToString(content.size()) + "\r\n";
@@ -486,7 +505,9 @@ std::string ServerManager::findFilePath(const std::string &uri)
 	if (uri.find("//") != std::string::npos)
 		return "";
 	if (uri == "/" || uri[uri.size() - 1] == '/')
-		return root + uri + _matched_location->getIndex();		
+		return root + uri + _matched_location->getIndex();
+    if (_uri == "/upload")
+        return root + uri + "/" + _matched_location->getIndex();
     return root + uri;
 }
 
@@ -527,7 +548,7 @@ bool ServerManager::isDirectory(const std::string &path)
 
 bool ServerManager::isAutoIndexEnabled(const std::string &path)
 {
-	if (_matched_location->getPath() == path || path.find(_matched_location->getPath() + "/") == 0)
+	if (_matched_location != NULL && (_matched_location->getPath() == path || path.find(_matched_location->getPath() + "/") == 0))
 		return _matched_location->getAutoindex() == "on";
 	return false;
 }
@@ -566,8 +587,6 @@ std::string ServerManager::getContentType(const std::string &file_path)
 		return "text/html";
     else if (file_path.find(".ico") != std::string::npos)
         return "image/x-icon";
-	else if (file_path.find("/error_pages") != std::string::npos)
-		return "text/html";
 	return "text/plain";
 }
 
@@ -590,7 +609,6 @@ void ServerManager::initStatusCode()
 	_status_message.insert(std::make_pair(413, "Payload Too Large"));
 	_status_message.insert(std::make_pair(500, "Internal Server Error"));
 	_status_message.insert(std::make_pair(501, "Not Implemented"));
-	_status_message.insert(std::make_pair(502, "Bad Gateway"));
 }
 
 void ServerManager::directoryListing(int client_socket, const std::string &uri, const std::string &file_path)
@@ -599,16 +617,24 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
     if (file_path[file_path.length() - 1] == '/')
         index_file = file_path;
     else
-	{
         index_file = file_path + "/" + _matched_location->getIndex();
-	}
 	if (isAutoIndexEnabled(uri))
 		sendAutoIndex(client_socket, uri);
 	else
 	{
 		if (_matched_location->getIndex().empty())
 		{
-			sendResponse(client_socket, 403, _status_message[403], index_file);
+
+            std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(403).c_str());
+            std::string error_file = _current_server->getServerRoot() + _current_server->getErrorPath(403);
+            if (file.is_open())
+            {
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                sendResponse(client_socket, 403, buffer.str(), error_file);
+            }
+            else
+			    sendResponse(client_socket, 403, _status_message[403], index_file);
 			return;
 		}
 		std::ifstream file(index_file.c_str());
@@ -620,23 +646,16 @@ void ServerManager::directoryListing(int client_socket, const std::string &uri, 
 
 std::string ServerManager::handleCgiRequest(int client_socket, const std::string &file_path)
 {
-    // Determine the interpreter based on the file extension
     std::string interpreter;
     if (file_path.find(".php") != std::string::npos)
-    {
-        interpreter = "/goinfre/bbosnak/homebrew/bin/php-cgi";  // Adjust path if necessary
-    }
+        interpreter = "/goinfre/bbosnak/homebrew/bin/php-cgi";
     else if (file_path.find(".py") != std::string::npos)
-    {
-        interpreter = "/usr/bin/python3";  // Adjust path if necessary
-    }
+        interpreter = "/usr/bin/python3";
     else
     {
-        // Unsupported script type
         sendResponse(client_socket, 500, "Unsupported script type", file_path);
         return "";
     }
-    // Check if interpreter is executable
     if (!isExecutable(interpreter))
     {
         sendResponse(client_socket, 500, "Interpreter not executable", interpreter);
@@ -650,35 +669,46 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
     if (pipe(cgi_output) == -1 || pipe(cgi_input) == -1)
     {
         perror("pipe");
-        sendResponse(client_socket, 500, _status_message[500], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 500, buffer.str(), _uri);
+        }
+        else
+            sendResponse(client_socket, 500, _status_message[500], _uri);
         return "";
     }
 
     if ((pid = fork()) < 0)
     {
         perror("fork");
-        sendResponse(client_socket, 500, _status_message[500], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 500, buffer.str(), _uri);
+        }
+        else
+            sendResponse(client_socket, 500, _status_message[500], _uri);
         return "";
     }
 
-    if (pid == 0)  // Child process
+    if (pid == 0)
     {
-        // Close unnecessary pipe ends
-        close(cgi_output[0]); // Close read end of output pipe
-        close(cgi_input[1]);  // Close write end of input pipe
+        close(cgi_output[0]);
+        close(cgi_input[1]);
 
-        // Redirect stdout to the write end of the output pipe
         dup2(cgi_output[1], STDOUT_FILENO);
         close(cgi_output[1]);
 
-        // Redirect stdin from the read end of the input pipe
         dup2(cgi_input[0], STDIN_FILENO);
         close(cgi_input[0]);
 
-        // Prepare arguments
         char *argv[] = {strdup(interpreter.c_str()), strdup(file_path.c_str()), NULL};
 
-        // Prepare environment variables
         std::stringstream ss;
         ss << _request_body.size();
         std::string script_filename = "SCRIPT_FILENAME=" + file_path;
@@ -697,48 +727,57 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
             NULL
         };
 
-        // Execute the interpreter
         execve(argv[0], argv, envp);
-        perror("execve");  // If execve returns, it's an error
+        perror("execve");
         exit(1);
     }
-    else  // Parent process
+    else
     {
-        // Close unnecessary pipe ends
-        close(cgi_output[1]); // Close write end of output pipe
-        close(cgi_input[0]);  // Close read end of input pipe
+        close(cgi_output[1]);
+        close(cgi_input[0]);
 
-        // Write the request body to the child's stdin
         write(cgi_input[1], _request_body.c_str(), _request_body.size());
-        close(cgi_input[1]); // Close write end after writing
+        close(cgi_input[1]);
 
-        // Read CGI output
         std::string response;
         char buffer[10240];
         ssize_t bytes_read;
 
         while ((bytes_read = read(cgi_output[0], buffer, sizeof(buffer))) > 0)
-        {
             response.append(buffer, bytes_read);
-        }
 
         close(cgi_output[0]);
 
         int status;
         waitpid(pid, &status, 0);
 
-        return response;
+        size_t header_end = response.find("\r\n\r\n");
+        if (header_end != std::string::npos)
+        {
+            std::string headers = response.substr(0, header_end);
+            std::string body = response.substr(header_end + 4);
+
+            return body;
+        }
+        else 
+            return response;
     }
 }
 
-
-
 void ServerManager::handleCgiPostRequest(int client_socket)
 {
-    std::string file_path = findFilePath(_uri);  // İstenen dosyanın yolunu bulun
-    if (!isExecutable(file_path))  // Dosya yürütülebilir mi kontrol edin
+    std::string file_path = findFilePath(_uri);
+    if (!isExecutable(file_path))
     {
-        sendResponse(client_socket, 403, _status_message[403], file_path);  // Eğer yürütülebilir değilse 403 Forbidden döndürün
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(403).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 403, buffer.str(), file_path);
+        }
+        else
+            sendResponse(client_socket, 403, _status_message[403], file_path);
         return;
     }
 
@@ -748,66 +787,75 @@ void ServerManager::handleCgiPostRequest(int client_socket)
 
     if (pipe(cgi_output) == -1 || pipe(cgi_input) == -1)
     {
-        sendResponse(client_socket, 500, _status_message[500], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 500, buffer.str(), _uri);
+        }
+        else
+            sendResponse(client_socket, 500, _status_message[500], _uri);
         return;
     }
 
     if ((pid = fork()) < 0)
     {
-        sendResponse(client_socket, 500, _status_message[500], _uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+        if (file.is_open())
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 500, buffer.str(), _uri);
+        }
+        else
+            sendResponse(client_socket, 500, _status_message[500], _uri);
         return;
     }
 
-    if (pid == 0)  // Çocuk işlem
+    if (pid == 0)
     {
-        char *argv[] = {strdup(file_path.c_str()), NULL};  // CGI programı için argüman
+        char *argv[] = {strdup(file_path.c_str()), NULL};
 
-        // URI'den sorgu parametrelerini ayıkla
         std::string query_string = parseQueryString(_uri);
         std::stringstream ss;
         ss << _request_body.size();
 
-        // Ortam değişkenlerini oluşturuyoruz
         char *envp[] = {
             strdup(("REQUEST_METHOD=" + _method).c_str()),
-            strdup(("CONTENT_LENGTH=" + ss.str()).c_str()),  // POST isteğinde content-length önemlidir
-            strdup(("QUERY_STRING=" + query_string).c_str()),  // URI'den sorgu parametrelerini alıyoruz
+            strdup(("CONTENT_LENGTH=" + ss.str()).c_str()),
+            strdup(("QUERY_STRING=" + query_string).c_str()),
             strdup(("SCRIPT_NAME=" + _uri).c_str()),
             NULL
         };
 
         close(cgi_output[0]);
-        dup2(cgi_output[1], STDOUT_FILENO);  // CGI'nin çıktısını standard output'a yönlendirin
+        dup2(cgi_output[1], STDOUT_FILENO);
 
         close(cgi_input[1]);
-        dup2(cgi_input[0], STDIN_FILENO);  // CGI'nin girdisini standard input'a yönlendirin
+        dup2(cgi_input[0], STDIN_FILENO);
 
-        execve(argv[0], argv, envp);  // CGI programını çalıştırın
+        execve(argv[0], argv, envp);
         exit(0);
     }
-    else  // Ebeveyn işlem
+    else
     {
-        close(cgi_output[1]);  // Çıkışın yazma ucunu kapatın
-        close(cgi_input[0]);   // Girişin okuma ucunu kapatın
+        close(cgi_output[1]);
+        close(cgi_input[0]);
 
-        // POST verisini CGI programına gönderin
         write(cgi_input[1], _request_body.c_str(), _request_body.size());
-        close(cgi_input[1]);  // Girişin yazma ucunu kapatın
+        close(cgi_input[1]);
 
         std::string response;
         char buffer[1024];
         int bytes_read;
 
-        while ((bytes_read = read(cgi_output[0], buffer, sizeof(buffer))) > 0)  // CGI çıktısını okuyun
-        {
+        while ((bytes_read = read(cgi_output[0], buffer, sizeof(buffer))) > 0)
             response.append(buffer, bytes_read);
-        }
-
-        close(cgi_output[0]);  // Çıkışın okuma ucunu kapatın
-        sendResponse(client_socket, 200, response, _uri);  // CGI çıktısını istemciye gönderin
+        close(cgi_output[0]);
+        sendResponse(client_socket, 200, response, _uri);
     }
 }
-
 
 bool ServerManager::isExecutable(const std::string &file_path)
 {
@@ -821,8 +869,8 @@ std::string ServerManager::parseQueryString(const std::string &uri)
 {
     size_t query_pos = uri.find('?');
     if (query_pos != std::string::npos)
-        return uri.substr(query_pos + 1);  // '?' sonrası kısmı al
-    return "";  // Sorgu parametresi yoksa boş döndür
+        return uri.substr(query_pos + 1);
+    return "";
 }
 
 bool ServerManager::isCgiScript(const std::string &file_path)
@@ -838,22 +886,14 @@ bool ServerManager::isCgiScript(const std::string &file_path)
 
 std::string ServerManager::getHeaderValue(const std::string &header_name)
 {
-    // Construct the header line to search for
     std::string header_line = header_name + ": ";
     
-    // Find the position where the header line starts
     size_t pos = _request.find(header_line);
     if (pos != std::string::npos)
     {
-        // Calculate the start position of the header value
         size_t start = pos + header_line.length();
-        
-        // Find the end of the header line (position of the next CRLF)
         size_t end = _request.find("\r\n", start);
-        
-        // Extract and return the header value
         return _request.substr(start, end - start);
     }
-    // Return an empty string if the header is not found
     return "";
 }

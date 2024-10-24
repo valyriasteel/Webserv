@@ -188,8 +188,10 @@ void ServerManager::handleClientRead(int client_socket)
         }
     }
 
-    if (bytes_received == 0)
+    if (bytes_received <= 0)
     {
+        if (bytes_received == -1)
+            throw std::runtime_error("Error: Failed to receive data");
         close(client_socket);
         FD_CLR(client_socket, &_master_fd);
         _client_to_server_map.erase(client_socket);
@@ -447,7 +449,23 @@ void ServerManager::handlePostRequest(int client_socket)
         if (!cgi_response.empty())
             sendResponse(client_socket, 200, cgi_response, file_path);
         else
-            sendResponse(client_socket, 500, _status_message[500], _uri);
+        {
+            std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
+            if (file.is_open())
+            {
+                std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                sendResponse(client_socket, 500, buffer.str(), file_path);
+            }
+            else
+                sendResponse(client_socket, 500, _status_message[500], _uri);
+        } 
+    }
+    else if (content_type.find("text/plain") != std::string::npos)
+    {
+        std::string response_body = body;
+        sendResponse(client_socket, 200, body, _uri);
     }
     else
         sendResponse(client_socket, 400, "Bad Request: Unsupported Content-Type", _uri);
@@ -459,7 +477,18 @@ void ServerManager::handleDeleteRequest(int client_socket)
 	if (remove(file_path.c_str()) == 0)
 		sendResponse(client_socket, 200, _status_message[200], file_path);
 	else
-		sendResponse(client_socket, 404, _status_message[404], file_path);
+    {
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(404).c_str());
+        if (file.is_open())
+        {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(404);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 404, buffer.str(), file_path);
+        }
+        else
+		    sendResponse(client_socket, 404, _status_message[404], file_path);
+    } 
 }
 
 void ServerManager::sendResponse(int client_socket, int status_code, const std::string &content, const std::string &file_path)
@@ -482,7 +511,8 @@ void ServerManager::sendResponse(int client_socket, int status_code, const std::
 
 	while (total_sent < response_size)
 	{
-		ssize_t bytes_sent = write(client_socket, response.c_str() + total_sent, 512);
+        ssize_t bytes_to_send = std::min(static_cast<ssize_t>(512), response_size - total_sent);
+		ssize_t bytes_sent = write(client_socket, response.c_str() + total_sent, bytes_to_send);
 
 		if (bytes_sent > 0)
         {
@@ -521,7 +551,16 @@ void ServerManager::sendAutoIndex(int client_socket, const std::string &uri)
 	DIR *dir = opendir(dir_path.c_str());
 	if (dir == NULL)
 	{
-		sendResponse(client_socket, 404, _status_message[404], uri);
+        std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(404).c_str());
+        if (file.is_open())
+        {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(404);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            sendResponse(client_socket, 404, buffer.str(), file_path);
+        }
+        else
+		    sendResponse(client_socket, 404, _status_message[404], uri);
 		return;
 	}
 	struct dirent *entry;
@@ -672,9 +711,10 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
         std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
         if (file.is_open())
         {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
             std::stringstream buffer;
             buffer << file.rdbuf();
-            sendResponse(client_socket, 500, buffer.str(), _uri);
+            sendResponse(client_socket, 500, buffer.str(), file_path);
         }
         else
             sendResponse(client_socket, 500, _status_message[500], _uri);
@@ -687,9 +727,10 @@ std::string ServerManager::handleCgiRequest(int client_socket, const std::string
         std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
         if (file.is_open())
         {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
             std::stringstream buffer;
             buffer << file.rdbuf();
-            sendResponse(client_socket, 500, buffer.str(), _uri);
+            sendResponse(client_socket, 500, buffer.str(), file_path);
         }
         else
             sendResponse(client_socket, 500, _status_message[500], _uri);
@@ -790,9 +831,10 @@ void ServerManager::handleCgiPostRequest(int client_socket)
         std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
         if (file.is_open())
         {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
             std::stringstream buffer;
             buffer << file.rdbuf();
-            sendResponse(client_socket, 500, buffer.str(), _uri);
+            sendResponse(client_socket, 500, buffer.str(), file_path);
         }
         else
             sendResponse(client_socket, 500, _status_message[500], _uri);
@@ -804,9 +846,10 @@ void ServerManager::handleCgiPostRequest(int client_socket)
         std::ifstream file(_current_server->getServerRoot() + _current_server->getErrorPath(500).c_str());
         if (file.is_open())
         {
+            std::string file_path = _current_server->getServerRoot() + _current_server->getErrorPath(500);
             std::stringstream buffer;
             buffer << file.rdbuf();
-            sendResponse(client_socket, 500, buffer.str(), _uri);
+            sendResponse(client_socket, 500, buffer.str(), file_path);
         }
         else
             sendResponse(client_socket, 500, _status_message[500], _uri);

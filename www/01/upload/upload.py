@@ -5,22 +5,18 @@ import cgi
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "../uploads")
 
-# Dosya yükleme formunu ve mesajı aynı sayfada gösterme fonksiyonu
 def render_page(message=""):
     print("<html><body>")
     print("<h1>File Upload</h1>")
     
-    # Dosya yükleme formu
     print('<form enctype="multipart/form-data" action="/upload/upload.py" method="POST">')
     print('<input type="file" name="uploaded_file"><br>')
     print('<input type="submit" value="Upload">')
     print('</form>')
     
-    # Yükleme sonrası mesajı göster
     if message:
         print(f"<p>{message}</p>")
     
-    # Yüklü dosyaları listele ve silme butonları oluştur
     if os.path.exists(UPLOAD_DIR):
         print("<h2>Uploaded Files:</h2>")
         for filename in os.listdir(UPLOAD_DIR):
@@ -31,18 +27,15 @@ def render_page(message=""):
                 print(f"<input type='submit' value='Delete'></form></p>")
     print("</body></html>")
 
-# Dosya yükleme işlemi
 def handle_post():
     form = cgi.FieldStorage()
     fileitem = form['uploaded_file']
 
     if fileitem.filename:
-        # Dizini kontrol et, ancak oluşturmadan devam et
         if not os.path.exists(UPLOAD_DIR):
             render_page("Upload directory does not exist.")
             return
 
-        # Dosya kaydetme
         filename = os.path.basename(fileitem.filename)
         filepath = os.path.join(UPLOAD_DIR, filename)
         with open(filepath, 'wb') as f:
@@ -53,7 +46,6 @@ def handle_post():
     else:
         render_page("No file was uploaded.")
 
-# Dosya silme işlemi
 def handle_delete():
     form = cgi.FieldStorage()
     filename = form.getvalue('delete_file')
@@ -75,7 +67,7 @@ def main():
         if "multipart/form-data" in content_type:
             handle_post()
         elif "application/x-www-form-urlencoded" in content_type:
-            handle_delete()  # Form tipi doğruysa dosya silme fonksiyonu çağrılır
+            handle_delete()
         else:
             print("Content-Type: text/html\n")
             print("<html><body>")
